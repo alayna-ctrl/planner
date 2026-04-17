@@ -1,0 +1,25 @@
+:root{
+  --cream:#faf7f2;
+  --paper:#f4eee3;
+  --line:#d9d1c4;
+  --text:#3a2f26;
+  --muted:#8d7d6d;
+  --green:#4a8a5a;
+  --green-soft:#dcefdc;
+  --rose-soft:#f7dddd;
+  --yellow-soft:#f8f1ce;
+  --shadow:0 2px 10px rgba(30,20,10,.08);
+  --radius:10px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Nunito',sans-serif;
+  background:var(--cream);
+  color:var(--text);
+}
+h1,h2,h3{
+  font-family:'Cormorant Garamond',serif;
+  margin:0;
+}
+.muted{color:var(--muted);font-size:12px}

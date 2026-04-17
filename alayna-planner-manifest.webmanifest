@@ -2,7 +2,7 @@
   "name": "Alayna's planner",
   "short_name": "Planner",
   "description": "Personal planner — local data in this browser.",
-  "start_url": "./alayna-planner-v6.html",
+  "start_url": "./alayna-planner-v8.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#faf7f2",

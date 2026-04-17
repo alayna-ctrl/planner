@@ -1,10 +1,24 @@
-/* Offline shell for hosted alayna-planner-v6.html — same origin / same localStorage. */
-const CACHE = 'alayna-planner-v1';
+/* Offline shell for hosted alayna-planner-v8.html — same origin / same localStorage. */
+const CACHE = 'alayna-planner-v2';
 const CORE = [
-  new URL('./alayna-planner-v6.html', self.location).href,
+  new URL('./alayna-planner-v8.html', self.location).href,
   new URL('./alayna-planner-manifest.webmanifest', self.location).href,
   new URL('./alayna-planner-icon-192.png', self.location).href,
-  new URL('./alayna-planner-icon-512.png', self.location).href
+  new URL('./alayna-planner-icon-512.png', self.location).href,
+  new URL('./src/styles/theme.css', self.location).href,
+  new URL('./src/styles/layout.css', self.location).href,
+  new URL('./src/styles/components.css', self.location).href,
+  new URL('./src/app/state.js', self.location).href,
+  new URL('./src/app/tasks.js', self.location).href,
+  new URL('./src/app/filters.js', self.location).href,
+  new URL('./src/app/weekly.js', self.location).href,
+  new URL('./src/app/calendar.js', self.location).href,
+  new URL('./src/app/views/today.js', self.location).href,
+  new URL('./src/app/views/weekly.js', self.location).href,
+  new URL('./src/app/views/areas.js', self.location).href,
+  new URL('./src/app/views/timeline.js', self.location).href,
+  new URL('./src/app/views/quick-capture.js', self.location).href,
+  new URL('./src/app/main.js', self.location).href
 ];
 
 self.addEventListener('install', (event) => {

@@ -1,0 +1,81 @@
+input,select,textarea,button{
+  font:inherit;
+}
+input,select,textarea{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:8px 10px;
+  background:#fff;
+  color:var(--text);
+}
+button{cursor:pointer}
+.nav-btn,.ghost-btn,.primary-btn,.chip{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:7px 10px;
+  background:#fff;
+  color:var(--text);
+}
+.nav-btn.active,.chip.active{
+  border-color:var(--green);
+  background:var(--green-soft);
+}
+.primary-btn{
+  border-color:var(--green);
+  background:var(--green);
+  color:#fff;
+}
+.ghost-btn.mini,.chip{
+  font-size:12px;
+  padding:4px 8px;
+}
+.card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:12px;
+  box-shadow:var(--shadow);
+}
+.section-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:8px;
+}
+.task-row{
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:8px;
+  margin-bottom:6px;
+  background:#fff;
+}
+.task-row.active{outline:2px solid var(--green-soft)}
+.task-row.done{opacity:.55}
+.check-btn{
+  width:20px;height:20px;border-radius:6px;border:1px solid var(--line);background:var(--paper);flex-shrink:0;
+}
+.task-main{flex:1;min-width:0}
+.task-title{font-size:13px;font-weight:600}
+.task-meta{font-size:11px;color:var(--muted)}
+.chip-row,.filter-row{display:flex;gap:6px;flex-wrap:wrap}
+.section-card.collapsed .section-body{display:none}
+.event-row,.mini-row,.timeline-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  border-bottom:1px solid var(--line);padding:7px 0;font-size:12px;
+}
+.event-row:last-child,.mini-row:last-child,.timeline-row:last-child{border-bottom:none}
+.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.metric{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column}
+.metric strong{font-size:18px}
+.reset-item{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.reset-item.done span{text-decoration:line-through;color:var(--muted)}
+.tag{border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:11px;background:var(--paper)}
+.toast{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+  background:var(--text);color:#fff;padding:8px 12px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .15s;
+}
+.toast.show{opacity:1}
