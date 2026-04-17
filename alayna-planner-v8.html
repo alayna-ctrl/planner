@@ -133,6 +133,23 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
 .meter>div{height:100%;border-radius:999px;transition:width .25s;}
 .vault-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
 .vault-meta{font-size:11px;color:var(--muted);}
+.focus-strip{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;margin:0 0 10px;}
+.focus-main{font-size:12px;color:var(--text);}
+.focus-hint{font-size:11px;color:var(--muted);}
+.cmd-chip{font-size:10px;padding:2px 8px;border-radius:20px;background:var(--warm);color:var(--muted);border:1px solid var(--border);}
+.cmd-helper{position:relative;}
+.cmd-pop{position:absolute;left:0;top:100%;margin-top:6px;z-index:20;width:min(360px,92vw);background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);box-shadow:var(--shadow);padding:8px 9px;display:none;}
+.cmd-pop.open{display:block;}
+.cmd-row{font-size:11px;color:var(--muted);padding:4px 0;border-bottom:1px solid var(--border);}
+.cmd-row:last-child{border-bottom:none;}
+.cmd-preview{font-size:10px;color:var(--muted);margin-top:6px;min-height:14px;}
+.week-summary{font-size:11px;color:var(--muted);padding:7px 10px;border-bottom:1px solid var(--border);background:#fff;}
+.day-pressure{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:20px;padding:1px 6px;display:inline-block;margin-top:4px;}
+.dp-light{background:var(--sage);color:var(--sage-t);}
+.dp-medium{background:var(--butter);color:var(--butter-t);}
+.dp-heavy{background:var(--rose);color:var(--rose-t);}
+.pool-place{margin-top:4px;padding:2px 6px;font-size:10px;border:1px solid var(--border2);background:transparent;border-radius:6px;color:var(--muted);cursor:pointer;}
+.vault-filters{display:flex;gap:6px;flex-wrap:wrap;margin:5px 0 7px;}
 
 /* tasks */
 .task-item{display:flex;align-items:flex-start;gap:9px;padding:9px 11px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);margin-bottom:6px;transition:border-color .12s;}
@@ -355,6 +372,11 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
   .today-cols,.health-grid,.comms-grid,.bp-grid,.life-grid,.school-grid,.kanban{grid-template-columns:1fr;}
   .study-stats{grid-template-columns:1fr 1fr;}
   .view{padding:14px;}
+  .btn-sm{min-height:34px;}
+  .week-wrapper{flex-direction:column;}
+  .pool-col{width:100%;border-left:none;border-top:1px solid var(--border);}
+  .week-cols{min-height:320px;}
+  .focus-strip{flex-direction:column;align-items:flex-start;}
 }
 </style>
 </head>
@@ -373,10 +395,10 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
   <div class="nav" data-view="school" onclick="goTo('school',this)"><span class="nav-em">📋</span> school<span class="nav-badge" id="schoolBadge" style="display:none">0</span></div>
   <div class="nav" data-view="study" onclick="goTo('study',this)"><span class="nav-em">📖</span> cert study</div>
   <div class="sb-section">communications</div>
-  <div class="nav" data-view="comms" onclick="goTo('comms',this)"><span class="nav-em">💌</span> emails + followups<span class="nav-badge" id="commsBadge" style="display:none">0</span></div>
+  <div class="nav" data-view="comms" onclick="goTo('comms',this)"><span class="nav-em">💌</span> communications<span class="nav-badge" id="commsBadge" style="display:none">0</span></div>
   <div class="nav" data-view="subs" onclick="goTo('subs',this)"><span class="nav-em">🏫</span> sub applications<span class="nav-badge" id="subsBadge" style="display:none">0</span></div>
   <div class="sb-section">money</div>
-  <div class="nav" data-view="finance" onclick="goTo('finance',this)"><span class="nav-em">💸</span> finance + montana<span class="nav-badge" id="financeBadge" style="display:none">0</span></div>
+  <div class="nav" data-view="finance" onclick="goTo('finance',this)"><span class="nav-em">💸</span> finance hub<span class="nav-badge" id="financeBadge" style="display:none">0</span></div>
   <div class="sb-section">wellbeing</div>
   <div class="nav" data-view="health" onclick="goTo('health',this)"><span class="nav-em">🌿</span> health + meds<span class="nav-badge" id="healthBadge" style="display:none">0</span></div>
   <div class="sb-section">home + life</div>
@@ -413,6 +435,13 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
   <div class="view-header">
     <div class="view-title" id="todayGreeting">good morning, alayna 🌸</div>
     <div style="font-size:12px;color:var(--muted)" id="todayDateStr"></div>
+  </div>
+  <div class="focus-strip">
+    <div>
+      <div class="focus-main" id="todayFocusMain">Start with one high-impact task.</div>
+      <div class="focus-hint" id="todayFocusHint">Use quick add or auto-schedule to reduce decision fatigue.</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="goTo('week',document.querySelector('[data-view=&quot;week&quot;]'))">open week planner</button>
   </div>
   <div class="today-cols">
     <div class="today-left">
@@ -465,7 +494,17 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
         <div style="margin-top:11px;padding-top:11px;border-top:1px solid var(--border)">
           <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px">quick add + NLP command</div>
           <div class="irow" style="margin-bottom:0">
-            <input type="text" id="quickText" placeholder="what needs doing… or 'add school task tomorrow'" onkeydown="if(event.key==='Enter')quickAdd()">
+            <div class="cmd-helper" style="flex:1;min-width:190px">
+              <input type="text" id="quickText" placeholder="what needs doing… or 'add school task tomorrow'" oninput="previewCommand(this.value)" onkeydown="if(event.key==='Enter')quickAdd()">
+              <div id="cmdHelpPop" class="cmd-pop">
+                <div style="font-size:10px;font-weight:700;color:var(--muted2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">command examples</div>
+                <div class="cmd-row">add school review quiz tomorrow urgent</div>
+                <div class="cmd-row">add medical refill call tomorrow</div>
+                <div class="cmd-row">add personal clean desk asap</div>
+                <div class="cmd-row">what is due this week?</div>
+              </div>
+              <div class="cmd-preview" id="cmdPreview"></div>
+            </div>
             <select id="quickCat" style="max-width:110px">
               <option value="school">📚 school</option>
               <option value="medical">💊 medical</option>
@@ -473,6 +512,7 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
             </select>
             <button class="btn btn-sage btn-sm" onclick="quickAdd()">add</button>
             <button class="btn btn-ghost btn-sm" id="voiceCmdBtn" onclick="startVoiceCommand()" title="voice command">🎙️</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleCommandHelp()">help</button>
           </div>
           <div style="font-size:10px;color:var(--muted2);margin-top:6px">Try: "add school review quiz tomorrow urgent" or "what is due this week?"</div>
         </div>
@@ -526,6 +566,7 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
       <button class="btn btn-ghost btn-sm" onclick="nextWeek()">next →</button>
     </div>
   </div>
+  <div class="week-summary" id="weekSummaryRow">Tip: use auto-schedule to place unscheduled work in balanced slots.</div>
   <div class="week-wrapper">
     <div class="week-cols" id="weekCols"></div>
     <div class="pool-col">
@@ -607,7 +648,7 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
 <div id="view-comms" class="view">
   <div class="view-header">
     <div class="view-title">emails + follow-ups 💌</div>
-    <div class="view-sub">people you need to email, contact, or follow up with</div>
+    <div class="view-sub">emails, follow-ups, and quick templates in one place</div>
   </div>
   <div class="comms-grid">
     <div>
@@ -665,7 +706,7 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
 <div id="view-finance" class="view">
   <div class="view-header">
     <div class="view-title">finance + montana bucket 💸</div>
-    <div class="view-sub">expenses, income, bills, budget, and trip savings</div>
+    <div class="view-sub">spending, income, bills, and montana savings in one flow</div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
     <div class="card"><div style="font-size:11px;color:var(--muted)">this month income</div><div id="finIncomeTotal" style="font-size:22px;font-family:'Cormorant Garamond',serif">$0</div></div>
@@ -741,6 +782,7 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
       <div class="card">
         <div class="card-title" style="font-size:14px;margin-bottom:8px">manual sync/import (free)</div>
         <label class="btn btn-ghost btn-sm" style="cursor:pointer">import origin/planner json/csv<input type="file" id="financeImportFile" accept=".json,.csv,text/csv,application/json" style="display:none" onchange="importFinanceData(event)"></label>
+        <div id="originSyncMeta" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
         <div style="font-size:11px;color:var(--muted);margin-top:7px">Imports planner CSV or common Origin-style exports locally (no paid API).</div>
       </div>
     </div>
@@ -1028,9 +1070,15 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
       </div>
       <div class="card">
         <div class="card-title" style="font-size:14px;margin-bottom:6px">application document vault 🔒</div>
+        <div style="font-size:10px;color:var(--muted2);margin-bottom:6px">Private to this browser. Include in regular planner backup exports.</div>
         <div class="irow">
           <input type="text" id="vaultDocType" placeholder="doc type (tb test, transcript, license)">
           <input type="date" id="vaultDocExp" title="optional expiry">
+        </div>
+        <div class="vault-filters">
+          <button class="btn btn-ghost btn-sm" onclick="setVaultFilter('all',this)" style="border-color:var(--sage-d)">all</button>
+          <button class="btn btn-ghost btn-sm" onclick="setVaultFilter('soon',this)">expires soon</button>
+          <button class="btn btn-ghost btn-sm" onclick="setVaultFilter('expired',this)">expired</button>
         </div>
         <div class="irow" style="margin-bottom:5px">
           <label class="btn btn-ghost btn-sm" style="cursor:pointer">attach file<input type="file" id="vaultDocFile" style="display:none" onchange="addVaultDoc(event)"></label>
@@ -1404,7 +1452,7 @@ function renderToday(){
   list.innerHTML='';
   const done=tasks.filter(t=>doneSet.has(t.id)).length;
   if(lbl)lbl.textContent=tasks.length?done+' of '+tasks.length+' done':'';
-  if(!tasks.length){empty.style.display='block';renderDueThisWeek();renderTodayMeds();renderNextAppt();renderFollowupSummary();renderSmartReminderSummary();renderPredictiveInsights();return;}
+  if(!tasks.length){empty.style.display='block';renderDueThisWeek();renderTodayMeds();renderNextAppt();renderFollowupSummary();renderSmartReminderSummary();renderPredictiveInsights();renderTodayFocus(tasks);return;}
   empty.style.display='none';
   tasks.forEach(t=>{
     const isDone=doneSet.has(t.id);
@@ -1413,7 +1461,16 @@ function renderToday(){
     div.innerHTML=`<div class="task-cb" onclick="toggleDone('${t.id}')">${CHECK}</div><div class="task-body"><div class="task-text">${esc(t.text)}</div><div class="task-meta"><span class="pill ${CAT_PILL[t.cat]||'p-gray'}">${t.cat}</span>${t.urgent&&!isDone?'<span style="color:var(--rose-d);font-size:10px;font-weight:700">urgent</span>':''}</div></div>`;
     list.appendChild(div);
   });
-  renderDueThisWeek();renderTodayMeds();renderNextAppt();renderFollowupSummary();renderSmartReminderSummary();renderPredictiveInsights();
+  renderDueThisWeek();renderTodayMeds();renderNextAppt();renderFollowupSummary();renderSmartReminderSummary();renderPredictiveInsights();renderTodayFocus(tasks);
+}
+function renderTodayFocus(tasks){
+  const main=document.getElementById('todayFocusMain'),hint=document.getElementById('todayFocusHint');
+  if(!main||!hint)return;
+  const first=(tasks||[]).find(t=>!String(t.text||'').startsWith('🌡'))||tasks[0];
+  const urgent=(tasks||[]).filter(t=>t.urgent).length;
+  if(!first){main.textContent='No urgent items right now.';hint.textContent='Use quick add to capture anything that pops up.';return;}
+  main.textContent='Next best action: '+String(first.text||'').replace(/^([^\s]+\s)?/,'');
+  hint.textContent=urgent?`${urgent} urgent items today. Start with this one, then reassess.`:'Low pressure day. Finish one task, then plan the next block.';
 }
 function toggleDone(id){const s=getS();const k='done_'+todayKey();if(!s[k])s[k]=[];const arr=s[k];const i=arr.indexOf(id);if(i>=0)arr.splice(i,1);else arr.push(id);setS(s);renderToday();}
 function resetDone(){const s=getS();s['done_'+todayKey()]=[];setS(s);renderToday();}
@@ -1423,28 +1480,51 @@ function quickAdd(){
   const s=getS();if(!s.todos)s.todos=[];
   s.todos.unshift({id:Date.now(),text,cat:document.getElementById('quickCat')?.value||'personal',priority:'urgent',done:false,top3:false,createdAt:Date.now()});
   applyRoutineBundles(s,text,document.getElementById('quickCat')?.value||'personal');
-  setS(s);document.getElementById('quickText').value='';renderToday();renderKanban();updateBadges();
+  setS(s);document.getElementById('quickText').value='';previewCommand('');renderToday();renderKanban();updateBadges();toast('Task added to your list');
+}
+function toggleCommandHelp(){
+  const pop=document.getElementById('cmdHelpPop');if(!pop)return;
+  pop.classList.toggle('open');
+}
+function parseCommandMeta(raw){
+  const lc=String(raw||'').toLowerCase();
+  const isQuestion=lc.includes('due this week');
+  const isTask=lc.startsWith('add ')||lc.includes(' todo ')||lc.includes('task ');
+  let cat='personal';if(/\bschool\b/.test(lc))cat='school';if(/\bmedical\b/.test(lc))cat='medical';
+  let pri='normal';if(/\burgent\b|\basap\b/.test(lc))pri='urgent';if(/\bsomeday\b/.test(lc))pri='someday';
+  let due='';if(/\btomorrow\b/.test(lc)){const d=new Date();d.setDate(d.getDate()+1);due=fmtISO(d);}
+  return {isQuestion,isTask,cat,pri,due};
+}
+function previewCommand(raw){
+  const pop=document.getElementById('cmdHelpPop'),pv=document.getElementById('cmdPreview');
+  if(pop)pop.classList.toggle('open',String(raw||'').trim().length>0);
+  if(!pv)return;
+  const t=String(raw||'').trim();
+  if(!t){pv.textContent='';return;}
+  const m=parseCommandMeta(t);
+  if(m.isQuestion){pv.textContent='Will answer your question about upcoming due work.';return;}
+  if(m.isTask){pv.textContent=`Will add task as ${m.cat} · ${m.pri}${m.due?` · due ${m.due}`:''}.`;return;}
+  pv.textContent='Tip: start with "add ..." for command mode, or click add for plain task.';
 }
 function handleNaturalCommand(raw){
   const t=String(raw||'').trim();if(!t)return false;
   const lc=t.toLowerCase();
-  if(lc.includes('due this week')){
+  const meta=parseCommandMeta(t);
+  if(meta.isQuestion){
     const ct=getAllAssigns().filter(a=>{const d=daysDiff(a.due);return d>=0&&d<=7&&a.status!=='done';}).length;
     toast(ct?`${ct} assignments due in the next 7 days`:'Nothing due this week 🎉');
     return true;
   }
-  if(!(lc.startsWith('add ')||lc.includes(' todo ')||lc.includes('task ')))return false;
-  let cat='personal';if(/\bschool\b/.test(lc))cat='school';if(/\bmedical\b/.test(lc))cat='medical';
-  let pri='normal';if(/\burgent\b|\basap\b/.test(lc))pri='urgent';if(/\bsomeday\b/.test(lc))pri='someday';
-  let due='';if(/\btomorrow\b/.test(lc)){const d=new Date();d.setDate(d.getDate()+1);due=fmtISO(d);}
+  if(!meta.isTask){toast('I could not parse that command. Try "add school task tomorrow urgent".');return false;}
   const m=t.match(/(?:add|todo|task)\s+(.*)$/i);
   const text=(m?m[1]:t).replace(/\b(tomorrow|today|urgent|asap|school|medical|personal)\b/ig,'').trim()||t;
   const s=getS();if(!s.todos)s.todos=[];
-  s.todos.unshift({id:Date.now(),text,cat,priority:pri,due,done:false,top3:false,createdAt:Date.now()});
-  applyRoutineBundles(s,text,cat);
+  s.todos.unshift({id:Date.now(),text,cat:meta.cat,priority:meta.pri,due:meta.due,done:false,top3:false,createdAt:Date.now()});
+  applyRoutineBundles(s,text,meta.cat);
   setS(s);
   renderToday();renderKanban();updateBadges();
-  toast('Added from command ✓');
+  previewCommand('');
+  toast(`Added from command: ${meta.cat} · ${meta.pri}${meta.due?` · ${meta.due}`:''}`);
   return true;
 }
 function startVoiceCommand(){
@@ -1520,10 +1600,10 @@ function renderPredictiveInsights(){
   const score=Math.min(100,overdue*22+dueSoon*14+openUrgent*9+apptsSoon*7);
   utilFill.style.width=score+'%';
   utilFill.style.background=score>=75?'var(--rose-d)':score>=45?'var(--peach-d)':'var(--sage-d)';
-  utilMeta.textContent=`resource utilization ${score}% · ${overdue} overdue · ${dueSoon} due soon`;
-  utilNote.textContent=score>=75?'Overcommitted this week: auto-schedule and defer 1-2 low-priority tasks.'
-    :score>=45?'Moderate load: protect study blocks and keep admin tasks short.'
-    :'Load looks healthy: good week to move one future task earlier.';
+  utilMeta.textContent=`Workload meter: ${score}%`;
+  utilNote.textContent=`Why: ${overdue} overdue, ${dueSoon} due soon, ${openUrgent} urgent to-dos, ${apptsSoon} appointments soon. `+(score>=75?'Action: run auto-schedule and defer one low-priority task.'
+    :score>=45?'Action: protect one focused study block today.'
+    :'Action: use this lighter load to get ahead on one assignment.');
 }
 
 // ═══════════════════════════════════════════════════
@@ -1549,6 +1629,7 @@ function autoScheduleAssignments(includeOverdue){
   if(!cands.length){toast('No assignments need auto-scheduling');return;}
   const apptDays=new Set(getAllAppts().map(a=>a.date));
   const load={};Object.entries(s.weekPlan).forEach(([d,arr])=>load[d]=(arr||[]).length);
+  let placedCt=0,skippedCt=0;
   cands.forEach(a=>{
     const due=parseISO(a.due);let best='';let bestScore=1e9;
     for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
@@ -1560,9 +1641,15 @@ function autoScheduleAssignments(includeOverdue){
       const score=cur*4+gap+(apptDays.has(iso)?2:0);
       if(score<bestScore){bestScore=score;best=iso;}
     }
-    if(best){if(!s.weekPlan[best])s.weekPlan[best]=[];s.weekPlan[best].push(a.id);load[best]=(load[best]||0)+1;}
+    if(best){if(!s.weekPlan[best])s.weekPlan[best]=[];s.weekPlan[best].push(a.id);load[best]=(load[best]||0)+1;placedCt++;}
+    else skippedCt++;
   });
-  setS(s);renderWeek();renderAssigns();toast(includeOverdue?'Missed items rescheduled ✓':'Assignments auto-scheduled ✓');
+  const heavyDays=Object.values(load).filter(n=>n>=3).length;
+  s.lastScheduleSummary={placed:placedCt,skipped:skippedCt,heavyDays,mode:includeOverdue?'reschedule':'autoschedule',at:Date.now()};
+  setS(s);renderWeek();renderAssigns();
+  const row=document.getElementById('weekSummaryRow');
+  if(row)row.textContent=`${includeOverdue?'Reschedule':'Auto-schedule'} complete: ${placedCt} placed, ${skippedCt} skipped, ${heavyDays} heavy days.`;
+  toast(includeOverdue?'Missed items rescheduled ✓':'Assignments auto-scheduled ✓');
 }
 function renderWeek(){
   const s=getS();const wp=s.weekPlan||{};const cols=document.getElementById('weekCols');if(!cols)return;
@@ -1570,10 +1657,16 @@ function renderWeek(){
   const now=new Date();now.setHours(0,0,0,0);const start=getWeekStart();const end=new Date(start);end.setDate(start.getDate()+6);
   const rng=start.getMonth()===end.getMonth()?MONTHS_FULL[start.getMonth()]+' '+start.getDate()+'–'+end.getDate()+', '+end.getFullYear():MONTHS[start.getMonth()]+' '+start.getDate()+' – '+MONTHS[end.getMonth()]+' '+end.getDate();
   const wr=document.getElementById('weekRangeLbl');if(wr)wr.textContent=rng;
+  const summary=s.lastScheduleSummary;
+  const row=document.getElementById('weekSummaryRow');
+  if(row&&summary)row.textContent=`Last ${summary.mode==='reschedule'?'reschedule':'auto-schedule'}: ${summary.placed} placed, ${summary.skipped} skipped, ${summary.heavyDays} heavy days.`;
   for(let i=0;i<7;i++){
     const day=new Date(start);day.setDate(start.getDate()+i);const iso=fmtISO(day);const isToday=day.getTime()===now.getTime();
     const col=document.createElement('div');col.className='day-col'+(isToday?' tc':'');
-    const head=document.createElement('div');head.className='day-header';head.innerHTML=`<div class="day-name">${DAYS_SHORT[day.getDay()]}</div><div class="day-num">${day.getDate()}</div>`;col.appendChild(head);
+    const dayLoad=(wp[iso]||[]).length;
+    const pClass=dayLoad>=3?'dp-heavy':dayLoad>=2?'dp-medium':'dp-light';
+    const pText=dayLoad>=3?'heavy':dayLoad>=2?'medium':'light';
+    const head=document.createElement('div');head.className='day-header';head.innerHTML=`<div class="day-name">${DAYS_SHORT[day.getDay()]}</div><div class="day-num">${day.getDate()}</div><span class="day-pressure ${pClass}">${pText}</span>`;col.appendChild(head);
     const appts=getAllAppts().filter(a=>a.date===iso);
     if(appts.length){const fx=document.createElement('div');fx.className='day-fixed';appts.forEach(a=>{const c=document.createElement('span');c.className='fixed-chip'+(a.cat==='medical'?' medical-chip':'');c.textContent=(a.title||'')+(a.time?' · '+a.time:'');fx.appendChild(c);});col.appendChild(fx);}
     const zone=document.createElement('div');zone.className='day-drop-zone';zone.dataset.date=iso;
@@ -1598,7 +1691,20 @@ function renderPool(){
   pool.innerHTML='';const now=new Date();now.setHours(0,0,0,0);
   const unplaced=getAllAssigns().filter(a=>!placed.has(String(a.id))&&a.status!=='done');
   if(!unplaced.length){pool.innerHTML='<div class="empty-state" style="font-size:11px">all scheduled! 🌿</div>';return;}
-  unplaced.forEach(a=>{const d=parseISO(a.due);const od=d<now;const sn=daysDiff(a.due)<=3;const card=document.createElement('div');card.className='assign-card'+(od?' overdue':sn?' due-soon':'');card.draggable=true;card.innerHTML=`<div class="ac-title">${esc(a.name)}</div><div class="ac-due">${esc(a.cls)} · ${MONTHS[d.getMonth()]} ${d.getDate()}</div>`;card.addEventListener('dragstart',e=>{e.dataTransfer.setData('aid',String(a.id));card.style.opacity='.4';});card.addEventListener('dragend',()=>card.style.opacity='1');pool.appendChild(card);});
+  const isTouch=window.matchMedia&&window.matchMedia('(max-width: 800px)').matches;
+  unplaced.forEach(a=>{const d=parseISO(a.due);const od=d<now;const sn=daysDiff(a.due)<=3;const card=document.createElement('div');card.className='assign-card'+(od?' overdue':sn?' due-soon':'');card.draggable=true;
+    const hint=isTouch?`<button class="pool-place" onclick="quickPlaceAssign(${JSON.stringify(a.id)})">place next open day</button>`:'';
+    card.innerHTML=`<div class="ac-title">${esc(a.name)}</div><div class="ac-due">${esc(a.cls)} · ${MONTHS[d.getMonth()]} ${d.getDate()}</div>${hint}`;
+    card.addEventListener('dragstart',e=>{e.dataTransfer.setData('aid',String(a.id));card.style.opacity='.4';});card.addEventListener('dragend',()=>card.style.opacity='1');pool.appendChild(card);});
+}
+function quickPlaceAssign(aid){
+  const s=getS();const start=getWeekStart();if(!s.weekPlan)s.weekPlan={};
+  for(let i=0;i<7;i++){
+    const d=new Date(start);d.setDate(start.getDate()+i);const iso=fmtISO(d);
+    const ct=(s.weekPlan[iso]||[]).length;
+    if(ct<3){placeAssign(aid,iso);toast('Placed on next open day');return;}
+  }
+  toast('No open day this week. Try auto-schedule.');
 }
 
 // ═══════════════════════════════════════════════════
@@ -1751,6 +1857,11 @@ function syncSmartReminders(){
   (s.followups||[]).forEach(f=>{if(f.status!=='done'&&f.date)addSmartReminder({title:'follow up: '+f.name,due:f.date,link:'comms',source:'followup',refId:f.id});});
   (s.subs||[]).forEach(a=>{if(a.status!=='active'&&a.status!=='not-pursuing'&&a.followUp)addSmartReminder({title:'check application: '+a.district,due:a.followUp,link:'subs',source:'sub',refId:a.id});});
   (s.financeBills||[]).forEach(b=>{if(!b.paid&&b.due)addSmartReminder({title:'pay bill: '+b.name,due:b.due,link:'finance',source:'bill',refId:b.id});});
+  const originMode=s.integrations?.origin?.mode||'manual';
+  if(originMode==='manual'){
+    const d=new Date();d.setMonth(d.getMonth()+1,1);
+    addSmartReminder({title:'export Origin CSV and import to planner',due:fmtISO(d),link:'finance',source:'origin-sync',refId:'monthly'});
+  }
 }
 function addFinanceEntry(){
   const type=document.getElementById('finType')?.value||'expense';
@@ -1904,6 +2015,9 @@ function importFinanceData(ev){
         });
         if(!added)throw new Error('No usable transactions found');
       }
+      if(!s.integrations||typeof s.integrations!=='object')s.integrations={origin:{mode:'manual',enabled:false,lastSync:''},plaid:{mode:'manual',enabled:false,lastSync:''}};
+      if(!s.integrations.origin||typeof s.integrations.origin!=='object')s.integrations.origin={mode:'manual',enabled:false,lastSync:''};
+      s.integrations.origin.lastSync=todayISO();
       setS(s);syncSmartReminders();renderFinance();updateBadges();renderAlerts();toast('Finance import complete');
     }catch(e){toast('Finance import failed: '+e.message);}
     ev.target.value='';
@@ -1974,6 +2088,11 @@ function renderFinance(){
   if(tf)tf.style.width=pct+'%';
   if(tm)tm.textContent=money(bal)+' saved of '+money(target)+' target · '+pct+'%';
   if(tx)tx.innerHTML=(mb.tx||[]).slice(0,8).map(t=>`<div style="font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)">+ ${money(t.transfer)} from ${money(t.pay)} shift · ${esc(t.date)}</div>`).join('')||'<div class="empty-state" style="font-size:11px">no shift transfers yet</div>';
+  const osm=document.getElementById('originSyncMeta');
+  if(osm){
+    const ls=s.integrations?.origin?.lastSync||'';
+    osm.textContent=ls?`last origin import: ${ls}`:'last origin import: not yet';
+  }
   renderTemplateList();
 }
 function ensureTemplateDefaults(){
@@ -2184,7 +2303,7 @@ function addVaultDoc(ev){
     setS(s);
     const t=document.getElementById('vaultDocType'),e=document.getElementById('vaultDocExp'),f=document.getElementById('vaultDocFile');
     if(t)t.value='';if(e)e.value='';if(f)f.value='';
-    renderVault();toast('Document stored locally ✓');
+    renderVault();toast('Document added to local vault');
   };
   r.readAsDataURL(file);
 }
@@ -2193,15 +2312,31 @@ function downloadVaultDoc(id){
   const a=document.createElement('a');a.href=d.data;a.download=d.name||'document';a.click();
 }
 function removeVaultDoc(id){const s=getS();s.docVault=(s.docVault||[]).filter(x=>x.id!==id);setS(s);renderVault();}
+let vaultFilter='all';
+function setVaultFilter(f,btn){
+  vaultFilter=f||'all';
+  document.querySelectorAll('.vault-filters .btn').forEach(b=>b.style.borderColor=b===btn?'var(--sage-d)':'var(--border2)');
+  renderVault();
+}
 function renderVault(){
   const el=document.getElementById('vaultList');if(!el)return;
-  const list=(getS().docVault||[]);
-  if(!list.length){el.innerHTML='<div class="empty-state" style="font-size:11px">no documents yet</div>';return;}
-  el.innerHTML=list.map(d=>{
+  const list=(getS().docVault||[]).slice().sort((a,b)=>{
+    const ae=a.expires?daysDiff(a.expires):9999,be=b.expires?daysDiff(b.expires):9999;
+    return ae-be;
+  });
+  const filtered=list.filter(d=>{
+    const exp=d.expires?daysDiff(d.expires):9999;
+    if(vaultFilter==='expired')return exp<0;
+    if(vaultFilter==='soon')return exp>=0&&exp<=30;
+    return true;
+  });
+  if(!list.length){el.innerHTML='<div class="empty-state" style="font-size:11px">no documents yet — add your first credential above.</div>';return;}
+  if(!filtered.length){el.innerHTML='<div class="empty-state" style="font-size:11px">no documents match this filter</div>';return;}
+  el.innerHTML=filtered.map(d=>{
     const exp=d.expires?daysDiff(d.expires):null;
     const expLbl=exp===null?'no expiry':exp<0?`expired ${Math.abs(exp)}d ago`:exp===0?'expires today':`expires in ${exp}d`;
     const expColor=exp===null?'var(--muted)':exp<0?'var(--rose-d)':exp<=14?'var(--peach-d)':'var(--sage-d)';
-    return `<div class="vault-row"><div><div style="font-size:12px;font-weight:700">${esc(d.docType||'document')} · ${esc(d.name||'file')}</div><div class="vault-meta" style="color:${expColor}">${esc(expLbl)}</div></div><div style="display:flex;gap:5px"><button class="btn btn-ghost btn-sm" onclick="downloadVaultDoc('${d.id}')" style="padding:2px 7px;font-size:10px">open</button><button class="btn btn-ghost btn-sm" onclick="removeVaultDoc('${d.id}')" style="padding:2px 7px;font-size:10px">×</button></div></div>`;
+    return `<div class="vault-row"><div><div style="font-size:12px;font-weight:700"><span class="cmd-chip">${esc(d.docType||'document')}</span> ${esc(d.name||'file')}</div><div class="vault-meta" style="color:${expColor}">${esc(expLbl)}</div></div><div style="display:flex;gap:5px"><button class="btn btn-ghost btn-sm" onclick="downloadVaultDoc('${d.id}')" style="padding:2px 7px;font-size:10px">download</button><button class="btn btn-ghost btn-sm" onclick="removeVaultDoc('${d.id}')" style="padding:2px 7px;font-size:10px">remove</button></div></div>`;
   }).join('');
 }
 
