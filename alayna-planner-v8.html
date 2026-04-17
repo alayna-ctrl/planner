@@ -371,6 +371,8 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
   <div class="sb-section">communications</div>
   <div class="nav" data-view="comms" onclick="goTo('comms',this)"><span class="nav-em">💌</span> emails + followups<span class="nav-badge" id="commsBadge" style="display:none">0</span></div>
   <div class="nav" data-view="subs" onclick="goTo('subs',this)"><span class="nav-em">🏫</span> sub applications<span class="nav-badge" id="subsBadge" style="display:none">0</span></div>
+  <div class="sb-section">money</div>
+  <div class="nav" data-view="finance" onclick="goTo('finance',this)"><span class="nav-em">💸</span> finance + montana<span class="nav-badge" id="financeBadge" style="display:none">0</span></div>
   <div class="sb-section">wellbeing</div>
   <div class="nav" data-view="health" onclick="goTo('health',this)"><span class="nav-em">🌿</span> health + meds<span class="nav-badge" id="healthBadge" style="display:none">0</span></div>
   <div class="sb-section">home + life</div>
@@ -392,6 +394,7 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
   <button class="mn-item active" data-view="today" onclick="goTo('today',this)"><span>🌸</span>today</button>
   <button class="mn-item" data-view="school" onclick="goTo('school',this)"><span>📋</span>school</button>
   <button class="mn-item" data-view="comms" onclick="goTo('comms',this)"><span>💌</span>comms</button>
+  <button class="mn-item" data-view="finance" onclick="goTo('finance',this)"><span>💸</span>money</button>
   <button class="mn-item" data-view="health" onclick="goTo('health',this)"><span>🌿</span>health</button>
   <button class="mn-item" data-view="life" onclick="goTo('life',this)"><span>🧠</span>life</button>
   <button class="mn-item" data-view="bigpicture" onclick="goTo('bigpicture',this)"><span>🗺</span>picture</button>
@@ -486,6 +489,10 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
       <div class="card" id="followupSummaryCard" style="display:none">
         <div class="card-title" style="font-size:14px;margin-bottom:5px">emails to send 💌</div>
         <div id="followupSummary" style="font-size:12px"></div>
+      </div>
+      <div class="card" id="smartReminderCard" style="display:none">
+        <div class="card-title" style="font-size:14px;margin-bottom:5px">smart reminders 🔔</div>
+        <div id="smartReminderSummary" style="font-size:12px"></div>
       </div>
     </div>
   </div>
@@ -608,6 +615,18 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
       </div>
     </div>
     <div>
+      <div class="card" style="margin-bottom:10px">
+        <div class="card-title" style="font-size:14px;margin-bottom:6px">email templates ✉️</div>
+        <div id="templateList"></div>
+        <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+          <input type="text" id="tplTitle" placeholder="template title" style="margin-bottom:6px">
+          <input type="text" id="tplSubject" placeholder="subject with {variables}" style="margin-bottom:6px">
+          <textarea id="tplBody" rows="5" placeholder="email body with {name}, {date}, etc." style="margin-bottom:6px"></textarea>
+          <button class="btn btn-ghost btn-sm" onclick="addTemplate()">save template</button>
+          <input type="text" id="tplVars" placeholder="variables: name=Prof Lee,course=READ 3423,date=May 2" style="margin-top:6px;margin-bottom:6px">
+          <textarea id="tplPreview" rows="5" placeholder="template preview / copied text"></textarea>
+        </div>
+      </div>
       <div class="card">
         <div class="card-title" style="font-size:14px;margin-bottom:3px">how to use this tab</div>
         <div style="font-size:12px;color:var(--muted);line-height:1.6">
@@ -623,6 +642,92 @@ label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bot
         <div style="font-size:12px;color:var(--muted);line-height:1.6">
           For cert exams: email score reports to <strong style="color:var(--text)">Katy Eshelman</strong> at <strong style="color:var(--text)">keshelman@twu.edu</strong> — add her as a follow-up when results come in.
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FINANCE ═══════════════════════════════════════════ -->
+<div id="view-finance" class="view">
+  <div class="view-header">
+    <div class="view-title">finance + montana bucket 💸</div>
+    <div class="view-sub">expenses, income, bills, budget, and trip savings</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+    <div class="card"><div style="font-size:11px;color:var(--muted)">this month income</div><div id="finIncomeTotal" style="font-size:22px;font-family:'Cormorant Garamond',serif">$0</div></div>
+    <div class="card"><div style="font-size:11px;color:var(--muted)">this month expenses</div><div id="finExpenseTotal" style="font-size:22px;font-family:'Cormorant Garamond',serif">$0</div></div>
+    <div class="card"><div style="font-size:11px;color:var(--muted)">budget remaining</div><div id="finBudgetRemain" style="font-size:22px;font-family:'Cormorant Garamond',serif">$0</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card">
+        <div class="card-title" style="font-size:14px;margin-bottom:8px">add transaction</div>
+        <div class="irow">
+          <select id="finType"><option value="expense">expense</option><option value="income">income</option></select>
+          <input type="date" id="finDate">
+          <input type="number" id="finAmount" step="0.01" placeholder="amount">
+        </div>
+        <div class="irow">
+          <input type="text" id="finCategory" placeholder="category (gas, groceries, sub pay)">
+          <input type="text" id="finNote" placeholder="note (optional)">
+        </div>
+        <button class="btn btn-sage btn-sm" onclick="addFinanceEntry()">add transaction</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="font-size:14px;margin-bottom:8px">bill tracker</div>
+        <div class="irow">
+          <input type="text" id="billName" placeholder="bill name">
+          <input type="date" id="billDue">
+          <input type="number" id="billAmount" step="0.01" placeholder="amount">
+        </div>
+        <div class="irow">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)"><input type="checkbox" id="billAutopay"> autopay</label>
+          <button class="btn btn-ghost btn-sm" onclick="addBill()">add bill</button>
+        </div>
+        <div id="billList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="font-size:14px;margin-bottom:8px">budget caps</div>
+        <div class="irow">
+          <input type="text" id="budgetCat" placeholder="category">
+          <input type="number" id="budgetCap" step="0.01" placeholder="monthly cap">
+          <button class="btn btn-ghost btn-sm" onclick="setBudgetCap()">save</button>
+        </div>
+        <div id="budgetList"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title" style="font-size:14px;margin-bottom:0">montana bucket 🏔️</div>
+        </div>
+        <div class="irow">
+          <input type="number" id="montanaTarget" step="0.01" placeholder="target amount">
+          <input type="number" id="montanaPct" step="1" min="0" max="100" placeholder="% from shift pay">
+          <button class="btn btn-ghost btn-sm" onclick="saveMontanaSettings()">save</button>
+        </div>
+        <div class="irow">
+          <input type="number" id="shiftPay" step="0.01" placeholder="sub shift pay">
+          <button class="btn btn-sage btn-sm" onclick="logSubShift()">log shift + transfer</button>
+        </div>
+        <div style="height:10px;background:var(--warm);border-radius:999px;overflow:hidden;margin:8px 0 5px"><div id="montanaFill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--teal-d),var(--sage-d));border-radius:999px"></div></div>
+        <div id="montanaMeta" style="font-size:12px;color:var(--muted)"></div>
+        <div id="montanaTx" style="margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="font-size:14px;margin-bottom:8px">finance history</div>
+        <div id="finList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="font-size:14px;margin-bottom:8px">manual sync/import (free)</div>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer">import origin/planner json/csv<input type="file" id="financeImportFile" accept=".json,.csv,text/csv,application/json" style="display:none" onchange="importFinanceData(event)"></label>
+        <div style="font-size:11px;color:var(--muted);margin-top:7px">Imports planner CSV or common Origin-style exports locally (no paid API).</div>
       </div>
     </div>
   </div>
@@ -1020,6 +1125,10 @@ const STATUS_PILL={'need-to-send':'p-rose','waiting':'p-peach','done':'p-sage'};
 const STATUS_LABEL={'need-to-send':'📤 need to send','waiting':'⏳ waiting','done':'✅ done'};
 const SUB_STATUS_PILL={researching:'p-gray',applied:'p-sky',pending:'p-peach',approved:'p-sage',active:'p-teal','not-pursuing':'p-gray'};
 const SUB_STATUS_LABEL={researching:'🔍 researching',applied:'📤 applied',pending:'⏳ pending',approved:'✅ approved',active:'🟢 active','not-pursuing':'❌ not pursuing'};
+const DEFAULT_EMAIL_TEMPLATES=[
+  {id:'tpl_flare_extension',title:'flare-up extension request',subject:'Request for extension due to health flare-up',body:'Hi {name},\n\nI am writing to ask for a short extension on {course} work due {date}. I am currently in a health flare-up and need a little extra time to complete it well.\n\nThank you for your understanding,\nAlayna'},
+  {id:'tpl_sub_reply',title:'district follow-up reply',subject:'Follow-up on substitute application',body:'Hi {name},\n\nI am following up on my substitute application for {district}. I am still very interested and happy to provide anything else you need.\n\nThank you,\nAlayna'}
+];
 
 // ═══════════════════════════════════════════════════
 //  STATE
@@ -1058,6 +1167,7 @@ function goTo(id,el){
   if(id==='study')renderStudy();
   if(id==='comms')renderFollowups();
   if(id==='subs')renderSubs();
+  if(id==='finance')renderFinance();
   if(id==='health'){renderWellness();renderMeds();renderAppts();renderDQ();}
   if(id==='bigpicture')renderBP();
   if(id==='life'){renderKanban();}
@@ -1144,6 +1254,16 @@ function buildAlerts(){
   (s.subs||[]).filter(a=>a.followUp&&daysDiff(a.followUp)<=1&&daysDiff(a.followUp)>=-2&&a.status!=='active'&&a.status!=='not-pursuing').forEach(a=>{
     alerts.push({type:'comms',icon:'🏫',title:'sub follow-up: '+a.district,sub:'follow-up date: '+a.followUp,link:'subs'});
   });
+  // Bills due soon
+  (s.financeBills||[]).filter(b=>!b.paid&&b.due&&daysDiff(b.due)<=7&&daysDiff(b.due)>=-3).forEach(b=>{
+    const d=daysDiff(b.due);
+    alerts.push({type:d<=1?'urgent':'warn',icon:'💸',title:'bill: '+b.name,sub:d<0?'overdue':d===0?'due today':'due in '+d+'d',link:'finance'});
+  });
+  // Smart reminders
+  (s.smartReminders||[]).filter(r=>!r.done&&r.due&&daysDiff(r.due)<=2&&daysDiff(r.due)>=-2).slice(0,3).forEach(r=>{
+    const d=daysDiff(r.due);
+    alerts.push({type:d<0?'urgent':'info',icon:'🔔',title:r.title,sub:d<0?'overdue':d===0?'due today':'due soon',link:r.link||'comms'});
+  });
 
   // Upcoming appointment today/tomorrow
   const upcomingAppts=getAllAppts().filter(a=>{const d=daysDiff(a.date||'');return d>=0&&d<=1;});
@@ -1194,6 +1314,9 @@ function updateBadges(){
   const sbadge=document.getElementById('subsBadge');if(sbadge){sbadge.style.display=subFu?'inline':'none';sbadge.textContent=subFu;}
   const urgMed=(s.meds||[]).filter(m=>{if(!m.refill)return false;const l=daysDiff(m.refill);return l<=7&&l>=-3;}).length;
   const hb=document.getElementById('healthBadge');if(hb){hb.style.display=urgMed?'inline':'none';hb.textContent=urgMed;}
+  const dueBills=(s.financeBills||[]).filter(b=>!b.paid&&b.due&&daysDiff(b.due)<=7&&daysDiff(b.due)>=-3).length;
+  const smartCt=(s.smartReminders||[]).filter(r=>!r.done).length;
+  const fb=document.getElementById('financeBadge');if(fb){const n=dueBills+smartCt;fb.style.display=n?'inline':'none';fb.textContent=n;}
   const totalAlerts=buildAlerts().length;
   const tb=document.getElementById('todayBadge');if(tb){tb.style.display=totalAlerts?'inline':'none';tb.textContent=totalAlerts;}
 }
@@ -1221,6 +1344,9 @@ function buildTasks(){
   ((s.weekPlan||{})[todayISO()]||[]).forEach(aid=>{const a=getAllAssigns().find(x=>String(x.id)===String(aid));if(a&&a.status!=='done')tasks.push(mk('📚 work on: '+a.name+' — '+a.cls,'school',false,'assign',70));});
   // Follow-ups due today
   (s.followups||[]).filter(f=>f.status==='need-to-send'&&f.date&&daysDiff(f.date)<=0).forEach(f=>tasks.push(mk('💌 email '+f.name+': '+f.what,'personal',true,'follow',75)));
+  // Smart reminders and bills
+  (s.financeBills||[]).filter(b=>!b.paid&&b.due&&daysDiff(b.due)<=1).forEach(b=>tasks.push(mk('💸 bill '+b.name+' '+(daysDiff(b.due)<0?'is overdue':'due now'),'personal',true,'bill',76)));
+  (s.smartReminders||[]).filter(r=>!r.done&&r.due&&daysDiff(r.due)<=1).slice(0,2).forEach(r=>tasks.push(mk('🔔 '+r.title,'personal',daysDiff(r.due)<=0,'reminder',74)));
   if(dt==='twu')tasks.push(mk('📖 review notes + readings before class','school',false,'twu',62));
   if(dt==='matts'&&energy>=3){getAllAssigns().filter(a=>{const d=daysDiff(a.due);return d>2&&d<=7&&a.status==='notstarted';}).slice(0,1).forEach(a=>tasks.push(mk('📚 get ahead: '+a.name,'school',false,'matts',68)));}
   if(dt==='home'){(s.todos||[]).filter(t=>t.cat==='personal'&&!t.done&&t.priority!=='someday').slice(0,1).forEach(t=>tasks.push(mk(t.text,'personal',false,'todo',35)));}
@@ -1252,7 +1378,7 @@ function renderToday(){
   list.innerHTML='';
   const done=tasks.filter(t=>doneSet.has(t.id)).length;
   if(lbl)lbl.textContent=tasks.length?done+' of '+tasks.length+' done':'';
-  if(!tasks.length){empty.style.display='block';renderDueThisWeek();renderTodayMeds();renderNextAppt();renderFollowupSummary();return;}
+  if(!tasks.length){empty.style.display='block';renderDueThisWeek();renderTodayMeds();renderNextAppt();renderFollowupSummary();renderSmartReminderSummary();return;}
   empty.style.display='none';
   tasks.forEach(t=>{
     const isDone=doneSet.has(t.id);
@@ -1261,7 +1387,7 @@ function renderToday(){
     div.innerHTML=`<div class="task-cb" onclick="toggleDone('${t.id}')">${CHECK}</div><div class="task-body"><div class="task-text">${esc(t.text)}</div><div class="task-meta"><span class="pill ${CAT_PILL[t.cat]||'p-gray'}">${t.cat}</span>${t.urgent&&!isDone?'<span style="color:var(--rose-d);font-size:10px;font-weight:700">urgent</span>':''}</div></div>`;
     list.appendChild(div);
   });
-  renderDueThisWeek();renderTodayMeds();renderNextAppt();renderFollowupSummary();
+  renderDueThisWeek();renderTodayMeds();renderNextAppt();renderFollowupSummary();renderSmartReminderSummary();
 }
 function toggleDone(id){const s=getS();const k='done_'+todayKey();if(!s[k])s[k]=[];const arr=s[k];const i=arr.indexOf(id);if(i>=0)arr.splice(i,1);else arr.push(id);setS(s);renderToday();}
 function resetDone(){const s=getS();s['done_'+todayKey()]=[];setS(s);renderToday();}
@@ -1302,6 +1428,13 @@ function renderFollowupSummary(){
   if(!pending.length){card.style.display='none';return;}
   card.style.display='block';
   body.innerHTML=pending.slice(0,4).map(f=>`<div style="padding:3px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:6px"><div><span style="font-weight:600">${esc(f.name)}</span> — <span style="color:var(--muted)">${esc(f.what)}</span></div><button class="btn btn-ghost btn-sm" onclick="markFollowDone('${f.id}')" style="font-size:10px;padding:2px 7px">done</button></div>`).join('');
+}
+function renderSmartReminderSummary(){
+  const card=document.getElementById('smartReminderCard');const body=document.getElementById('smartReminderSummary');if(!card||!body)return;
+  const list=getOpenSmartReminders().slice(0,4);
+  if(!list.length){card.style.display='none';return;}
+  card.style.display='block';
+  body.innerHTML=list.map(r=>`<div style="padding:3px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:6px"><div><span style="font-weight:600">${esc(r.title)}</span>${r.due?` <span style="color:var(--muted)">(${esc(r.due)})</span>`:''}</div><button class="btn btn-ghost btn-sm" onclick="markSmartReminderDone('${r.id}')" style="font-size:10px;padding:2px 7px">done</button></div>`).join('');
 }
 
 // ═══════════════════════════════════════════════════
@@ -1478,6 +1611,257 @@ function renderStudyList(){
 }
 
 // ═══════════════════════════════════════════════════
+//  FINANCE + MONTANA BUCKET
+// ═══════════════════════════════════════════════════
+function money(n){const v=Number(n)||0;return '$'+v.toFixed(2);}
+function monthKey(iso){const d=parseISO(iso||todayISO());if(isNaN(d))return '';return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function getOpenSmartReminders(){return (getS().smartReminders||[]).filter(r=>!r.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));}
+function addSmartReminder(rem){
+  const s=getS();if(!Array.isArray(s.smartReminders))s.smartReminders=[];
+  const key=(rem.source||'manual')+'|'+(rem.refId||'')+'|'+(rem.title||'');
+  if(s.smartReminders.some(r=>!r.done&&((r.source||'manual')+'|'+(r.refId||'')+'|'+(r.title||''))===key))return;
+  s.smartReminders.unshift({id:'sr_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),title:rem.title||'reminder',due:rem.due||'',link:rem.link||'today',source:rem.source||'manual',refId:rem.refId||'',done:false,createdAt:Date.now()});
+  setS(s);
+}
+function markSmartReminderDone(id){const s=getS();const r=(s.smartReminders||[]).find(x=>x.id===id);if(r){r.done=true;setS(s);renderToday();renderFollowups();updateBadges();renderAlerts();}}
+function syncSmartReminders(){
+  const s=getS();
+  if(!Array.isArray(s.smartReminders))s.smartReminders=[];
+  const keep=(s.smartReminders||[]).filter(r=>!['followup','sub','bill'].includes(r.source));
+  s.smartReminders=keep;
+  (s.followups||[]).forEach(f=>{if(f.status!=='done'&&f.date)addSmartReminder({title:'follow up: '+f.name,due:f.date,link:'comms',source:'followup',refId:f.id});});
+  (s.subs||[]).forEach(a=>{if(a.status!=='active'&&a.status!=='not-pursuing'&&a.followUp)addSmartReminder({title:'check application: '+a.district,due:a.followUp,link:'subs',source:'sub',refId:a.id});});
+  (s.financeBills||[]).forEach(b=>{if(!b.paid&&b.due)addSmartReminder({title:'pay bill: '+b.name,due:b.due,link:'finance',source:'bill',refId:b.id});});
+}
+function addFinanceEntry(){
+  const type=document.getElementById('finType')?.value||'expense';
+  const date=document.getElementById('finDate')?.value||todayISO();
+  const amount=Number(document.getElementById('finAmount')?.value||0);
+  const category=(document.getElementById('finCategory')?.value||'').trim();
+  const note=(document.getElementById('finNote')?.value||'').trim();
+  if(!amount||!category)return;
+  const s=getS();if(!Array.isArray(s.financeEntries))s.financeEntries=[];
+  s.financeEntries.unshift({id:'fe_'+Date.now(),type,date,amount,category,note,createdAt:Date.now()});
+  setS(s);
+  ['finAmount','finCategory','finNote'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderFinance();updateBadges();renderAlerts();
+}
+function deleteFinanceEntry(id){const s=getS();s.financeEntries=(s.financeEntries||[]).filter(x=>x.id!==id);setS(s);renderFinance();}
+function setBudgetCap(){
+  const cat=(document.getElementById('budgetCat')?.value||'').trim();
+  const cap=Number(document.getElementById('budgetCap')?.value||0);
+  if(!cat||!cap)return;
+  const s=getS();if(!s.financeBudgets||typeof s.financeBudgets!=='object')s.financeBudgets={};
+  s.financeBudgets[cat]=cap;setS(s);
+  const c=document.getElementById('budgetCat'),v=document.getElementById('budgetCap');if(c)c.value='';if(v)v.value='';
+  renderFinance();
+}
+function removeBudgetCap(cat){const s=getS();if(s.financeBudgets)delete s.financeBudgets[cat];setS(s);renderFinance();}
+function addBill(){
+  const name=(document.getElementById('billName')?.value||'').trim();
+  const due=document.getElementById('billDue')?.value||'';
+  const amount=Number(document.getElementById('billAmount')?.value||0);
+  const autopay=!!document.getElementById('billAutopay')?.checked;
+  if(!name||!due||!amount)return;
+  const s=getS();if(!Array.isArray(s.financeBills))s.financeBills=[];
+  s.financeBills.unshift({id:'bill_'+Date.now(),name,due,amount,autopay,paid:false,paidAt:''});setS(s);
+  ['billName','billDue','billAmount'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const ap=document.getElementById('billAutopay');if(ap)ap.checked=false;
+  syncSmartReminders();renderFinance();updateBadges();renderAlerts();
+}
+function toggleBillPaid(id){
+  const s=getS();const b=(s.financeBills||[]).find(x=>x.id===id);if(!b)return;
+  b.paid=!b.paid;b.paidAt=b.paid?todayISO():'';
+  setS(s);syncSmartReminders();renderFinance();updateBadges();renderAlerts();
+}
+function deleteBill(id){const s=getS();s.financeBills=(s.financeBills||[]).filter(x=>x.id!==id);setS(s);syncSmartReminders();renderFinance();}
+function saveMontanaSettings(){
+  const s=getS();if(!s.montanaBucket)s.montanaBucket={target:1500,balance:0,pct:20,tx:[]};
+  const t=Number(document.getElementById('montanaTarget')?.value||s.montanaBucket.target||0);
+  const p=Number(document.getElementById('montanaPct')?.value||s.montanaBucket.pct||20);
+  s.montanaBucket.target=t>0?t:s.montanaBucket.target||1500;
+  s.montanaBucket.pct=Math.min(100,Math.max(0,p));
+  setS(s);renderFinance();
+}
+function logSubShift(){
+  const pay=Number(document.getElementById('shiftPay')?.value||0);if(!pay)return;
+  const s=getS();if(!s.montanaBucket)s.montanaBucket={target:1500,balance:0,pct:20,tx:[]};
+  const pct=Number(s.montanaBucket.pct||20);const transfer=+(pay*(pct/100)).toFixed(2);
+  if(!Array.isArray(s.montanaBucket.tx))s.montanaBucket.tx=[];
+  s.montanaBucket.balance=+((Number(s.montanaBucket.balance)||0)+transfer).toFixed(2);
+  s.montanaBucket.tx.unshift({id:'mb_'+Date.now(),date:todayISO(),pay,transfer,note:'sub shift'});
+  if(!Array.isArray(s.financeEntries))s.financeEntries=[];
+  s.financeEntries.unshift({id:'fe_'+Date.now(),type:'income',date:todayISO(),amount:pay,category:'sub shift',note:'auto from montana bucket',createdAt:Date.now()});
+  setS(s);
+  const el=document.getElementById('shiftPay');if(el)el.value='';
+  renderFinance();toast('Shift logged. '+money(transfer)+' moved to Montana bucket');
+}
+function parseCsvRows(txt){
+  const rows=[];let row=[];let cur='';let q=false;
+  for(let i=0;i<txt.length;i++){
+    const ch=txt[i],nx=txt[i+1];
+    if(ch==='"'){
+      if(q&&nx==='"'){cur+='"';i++;continue;}
+      q=!q;continue;
+    }
+    if(ch===','&&!q){row.push(cur);cur='';continue;}
+    if((ch==='\n'||ch==='\r')&&!q){
+      if(ch==='\r'&&nx==='\n')i++;
+      row.push(cur);rows.push(row);row=[];cur='';continue;
+    }
+    cur+=ch;
+  }
+  row.push(cur);rows.push(row);
+  return rows.filter(r=>r.some(c=>String(c||'').trim()!==''));
+}
+function normImportHeader(k){return String(k||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');}
+function csvCell(row,map,keys){
+  for(const k of keys){const idx=map[normImportHeader(k)];if(idx!==undefined)return String(row[idx]||'').trim();}
+  return '';
+}
+function parseImportAmount(v){
+  const t=String(v||'').trim();
+  if(!t)return 0;
+  const neg=/^\(.*\)$/.test(t);
+  const n=Number(t.replace(/[,$\s]/g,'').replace(/[()]/g,''));
+  if(!isFinite(n))return 0;
+  return neg?-Math.abs(n):n;
+}
+function toIsoImportDate(v){
+  const raw=String(v||'').trim();
+  if(!raw)return todayISO();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw;
+  const d=new Date(raw);
+  if(!isNaN(d.getTime()))return d.toISOString().slice(0,10);
+  const m=raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if(!m)return todayISO();
+  const mm=String(Number(m[1])).padStart(2,'0');
+  const dd=String(Number(m[2])).padStart(2,'0');
+  const yyyy=String(m[3]).length===2?'20'+m[3]:m[3];
+  return `${yyyy}-${mm}-${dd}`;
+}
+function toFinanceEntryFromCsvRow(row,map){
+  const date=toIsoImportDate(csvCell(row,map,['date','posted date','posted on','transaction date','created at']));
+  const category=csvCell(row,map,['category','category name','tag'])||'misc';
+  const note=csvCell(row,map,['note','notes','memo','description','merchant','name'])||'';
+  const typeRaw=csvCell(row,map,['type','transaction type','direction']).toLowerCase();
+  const directAmt=parseImportAmount(csvCell(row,map,['amount','transaction amount','value']));
+  const debitAmt=parseImportAmount(csvCell(row,map,['debit','withdrawal','outflow']));
+  const creditAmt=parseImportAmount(csvCell(row,map,['credit','deposit','inflow']));
+  let amount=Math.abs(directAmt||0);
+  let type='expense';
+  if(creditAmt>0&&debitAmt<=0){amount=creditAmt;type='income';}
+  else if(debitAmt>0&&creditAmt<=0){amount=debitAmt;type='expense';}
+  else if(directAmt<0){amount=Math.abs(directAmt);type='expense';}
+  else if(directAmt>0){amount=directAmt;type='income';}
+  if(typeRaw){
+    if(typeRaw.includes('expense')||typeRaw.includes('debit')||typeRaw.includes('withdraw'))type='expense';
+    if(typeRaw.includes('income')||typeRaw.includes('credit')||typeRaw.includes('deposit'))type='income';
+  }
+  if(!amount||!isFinite(amount))return null;
+  return {id:'fe_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),type,date,amount,category,note,createdAt:Date.now()};
+}
+function importFinanceData(ev){
+  const f=ev.target.files&&ev.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const txt=String(r.result||'');
+      const s=getS();
+      if(!Array.isArray(s.financeEntries))s.financeEntries=[];
+      if(!Array.isArray(s.financeBills))s.financeBills=[];
+      if(f.name.toLowerCase().endsWith('.json')){
+        const o=JSON.parse(txt);const data=o.data&&typeof o.data==='object'?o.data:o;
+        if(Array.isArray(data.financeEntries))s.financeEntries=[...data.financeEntries,...s.financeEntries];
+        if(Array.isArray(data.financeBills))s.financeBills=[...data.financeBills,...s.financeBills];
+      }else{
+        const rows=parseCsvRows(txt);if(rows.length<2)throw new Error('CSV is empty');
+        const map={};rows[0].forEach((h,i)=>{map[normImportHeader(h)]=i;});
+        let added=0;
+        rows.slice(1).forEach(row=>{
+          const entry=toFinanceEntryFromCsvRow(row,map);
+          if(!entry)return;
+          s.financeEntries.unshift(entry);added++;
+        });
+        if(!added)throw new Error('No usable transactions found');
+      }
+      setS(s);syncSmartReminders();renderFinance();updateBadges();renderAlerts();toast('Finance import complete');
+    }catch(e){toast('Finance import failed: '+e.message);}
+    ev.target.value='';
+  };
+  r.readAsText(f);
+}
+function renderTemplateList(){
+  const el=document.getElementById('templateList');if(!el)return;
+  const list=getS().emailTemplates||[];
+  if(!list.length){el.innerHTML='<div class="empty-state" style="font-size:11px">no templates yet</div>';return;}
+  const vars=(document.getElementById('tplVars')?.value||'').trim();
+  const map={};vars.split(',').map(v=>v.trim()).filter(Boolean).forEach(pair=>{const i=pair.indexOf('=');if(i>0)map[pair.slice(0,i).trim()]=pair.slice(i+1).trim();});
+  const fill=(txt)=>String(txt||'').replace(/\{([^}]+)\}/g,(_,k)=>map[k]??'{'+k+'}');
+  el.innerHTML=list.map(t=>`<div class="mini-item"><div class="mini-main"><div class="mini-title">${esc(t.title)}</div><div class="mini-sub">${esc(t.subject)}</div></div><div class="mini-actions"><button class="btn btn-ghost btn-sm" onclick="useTemplate('${t.id}')">use</button><button class="btn btn-ghost btn-sm" onclick="copyTemplate('${t.id}')">copy</button><button class="btn btn-ghost btn-sm" onclick="deleteTemplate('${t.id}')">×</button></div></div>`).join('');
+  const pv=document.getElementById('tplPreview');
+  if(pv&&list[0])pv.value='Subject: '+fill(list[0].subject)+'\n\n'+fill(list[0].body);
+}
+function addTemplate(){
+  const title=(document.getElementById('tplTitle')?.value||'').trim();
+  const subject=(document.getElementById('tplSubject')?.value||'').trim();
+  const body=(document.getElementById('tplBody')?.value||'').trim();
+  if(!title||!subject||!body)return;
+  const s=getS();if(!Array.isArray(s.emailTemplates))s.emailTemplates=[];
+  s.emailTemplates.unshift({id:'tpl_'+Date.now(),title,subject,body,createdAt:Date.now()});setS(s);
+  ['tplTitle','tplSubject','tplBody'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderTemplateList();
+}
+function deleteTemplate(id){const s=getS();s.emailTemplates=(s.emailTemplates||[]).filter(t=>t.id!==id);setS(s);renderTemplateList();}
+function getTemplateById(id){return (getS().emailTemplates||[]).find(t=>t.id===id);}
+function useTemplate(id){
+  const t=getTemplateById(id);if(!t)return;
+  const pv=document.getElementById('tplPreview');if(!pv)return;
+  const vars=(document.getElementById('tplVars')?.value||'').trim();
+  const map={};vars.split(',').map(v=>v.trim()).filter(Boolean).forEach(pair=>{const i=pair.indexOf('=');if(i>0)map[pair.slice(0,i).trim()]=pair.slice(i+1).trim();});
+  const fill=(txt)=>String(txt||'').replace(/\{([^}]+)\}/g,(_,k)=>map[k]??'{'+k+'}');
+  pv.value='Subject: '+fill(t.subject)+'\n\n'+fill(t.body);
+}
+function copyTemplate(id){
+  useTemplate(id);
+  const pv=document.getElementById('tplPreview');if(!pv)return;
+  const text=pv.value;
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(()=>toast('Template copied ✓')).catch(()=>toast('Copy failed'));return;}
+  pv.select();document.execCommand('copy');toast('Template copied ✓');
+}
+function renderFinance(){
+  const s=getS();
+  const fd=document.getElementById('finDate');if(fd&&!fd.value)fd.value=todayISO();
+  const entries=(s.financeEntries||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const month=monthKey(todayISO());
+  const monthEntries=entries.filter(e=>monthKey(e.date)===month);
+  const income=monthEntries.filter(e=>e.type==='income').reduce((n,e)=>n+Number(e.amount||0),0);
+  const expense=monthEntries.filter(e=>e.type!=='income').reduce((n,e)=>n+Number(e.amount||0),0);
+  const capTotal=Object.values(s.financeBudgets||{}).reduce((n,v)=>n+Number(v||0),0);
+  const remain=capTotal-expense;
+  const ei=document.getElementById('finIncomeTotal'),ee=document.getElementById('finExpenseTotal'),er=document.getElementById('finBudgetRemain');
+  if(ei)ei.textContent=money(income);if(ee)ee.textContent=money(expense);if(er)er.textContent=money(remain);
+  const fl=document.getElementById('finList');
+  if(fl)fl.innerHTML=entries.slice(0,25).map(e=>`<div class="mini-item"><div class="mini-main"><div class="mini-title">${e.type==='income'?'+' : '-'}${money(e.amount)} · ${esc(e.category||'misc')}</div><div class="mini-sub">${esc(e.date||'')} ${e.note?'· '+esc(e.note):''}</div></div><button class="btn btn-ghost btn-sm" onclick="deleteFinanceEntry('${e.id}')">×</button></div>`).join('')||'<div class="empty-state" style="font-size:11px">no transactions yet</div>';
+  const bl=document.getElementById('billList');const bills=(s.financeBills||[]).slice().sort((a,b)=>String(a.due||'').localeCompare(String(b.due||'')));
+  if(bl)bl.innerHTML=bills.map(b=>{const d=daysDiff(b.due);const clr=b.paid?'var(--sage-d)':d<0?'var(--rose-d)':d<=3?'var(--peach-d)':'var(--muted)';return `<div class="mini-item"><button class="mini-check${b.paid?' on':''}" onclick="toggleBillPaid('${b.id}')"></button><div class="mini-main"><div class="mini-title">${esc(b.name)} · ${money(b.amount)}</div><div class="mini-sub" style="color:${clr}">${b.paid?'paid '+esc(b.paidAt||''):(d<0?'overdue':d===0?'due today':'due '+esc(b.due))}${b.autopay?' · autopay':''}</div></div><button class="btn btn-ghost btn-sm" onclick="deleteBill('${b.id}')">×</button></div>`;}).join('')||'<div class="empty-state" style="font-size:11px">no bills yet</div>';
+  const bgl=document.getElementById('budgetList');
+  if(bgl)bgl.innerHTML=Object.entries(s.financeBudgets||{}).map(([cat,cap])=>{const spent=monthEntries.filter(e=>e.type!=='income'&&String(e.category||'').toLowerCase()===String(cat).toLowerCase()).reduce((n,e)=>n+Number(e.amount||0),0);const left=Number(cap||0)-spent;return `<div class="mini-item"><div class="mini-main"><div class="mini-title">${esc(cat)} cap ${money(cap)}</div><div class="mini-sub">${left<0?'over by '+money(Math.abs(left)):'left '+money(left)}</div></div><button class="btn btn-ghost btn-sm" onclick="removeBudgetCap(${JSON.stringify(cat)})">×</button></div>`;}).join('')||'<div class="empty-state" style="font-size:11px">no budget caps yet</div>';
+  if(!s.montanaBucket)s.montanaBucket={target:1500,balance:0,pct:20,tx:[]};
+  const mb=s.montanaBucket;const target=Number(mb.target||1500),bal=Number(mb.balance||0),pct=target?Math.min(100,Math.round((bal/target)*100)):0;
+  const tf=document.getElementById('montanaFill'),tm=document.getElementById('montanaMeta'),tx=document.getElementById('montanaTx');
+  const mt=document.getElementById('montanaTarget'),mp=document.getElementById('montanaPct');
+  if(mt&&!mt.value)mt.value=String(target);if(mp&&!mp.value)mp.value=String(Number(mb.pct||20));
+  if(tf)tf.style.width=pct+'%';
+  if(tm)tm.textContent=money(bal)+' saved of '+money(target)+' target · '+pct+'%';
+  if(tx)tx.innerHTML=(mb.tx||[]).slice(0,8).map(t=>`<div style="font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)">+ ${money(t.transfer)} from ${money(t.pay)} shift · ${esc(t.date)}</div>`).join('')||'<div class="empty-state" style="font-size:11px">no shift transfers yet</div>';
+  renderTemplateList();
+}
+function ensureTemplateDefaults(){
+  const s=getS();if(!Array.isArray(s.emailTemplates)||!s.emailTemplates.length){s.emailTemplates=DEFAULT_EMAIL_TEMPLATES.map(t=>({...t}));setS(s);}
+}
+
+// ═══════════════════════════════════════════════════
 //  FOLLOW-UPS (COMMS)
 // ═══════════════════════════════════════════════════
 function addFollow(){
@@ -1486,19 +1870,22 @@ function addFollow(){
   s.followups.unshift({id:'f_'+Date.now(),name,what,status:document.getElementById('fStatus')?.value||'need-to-send',date:document.getElementById('fDate')?.value||'',notes:(document.getElementById('fNotes')?.value||'').trim(),createdAt:Date.now()});
   setS(s);['fName','fWhat','fDate','fNotes'].forEach(i=>{const e=document.getElementById(i);if(e)e.value='';});
   document.getElementById('fStatus').value='need-to-send';
-  renderFollowups();updateBadges();renderAlerts();renderFollowupSummary();toast('Follow-up added 💌');
+  syncSmartReminders();renderFollowups();updateBadges();renderAlerts();renderFollowupSummary();renderSmartReminderSummary();toast('Follow-up added 💌');
 }
-function updateFollowStatus(id,val){const s=getS();const f=(s.followups||[]).find(x=>x.id===id);if(f){f.status=val;setS(s);renderFollowups();updateBadges();renderAlerts();renderFollowupSummary();}}
+function updateFollowStatus(id,val){const s=getS();const f=(s.followups||[]).find(x=>x.id===id);if(f){f.status=val;setS(s);syncSmartReminders();renderFollowups();updateBadges();renderAlerts();renderFollowupSummary();renderSmartReminderSummary();}}
 function markFollowDone(id){updateFollowStatus(id,'done');}
-function deleteFollow(id){const s=getS();s.followups=(s.followups||[]).filter(x=>x.id!==id);setS(s);renderFollowups();updateBadges();renderAlerts();renderFollowupSummary();}
+function deleteFollow(id){const s=getS();s.followups=(s.followups||[]).filter(x=>x.id!==id);setS(s);syncSmartReminders();renderFollowups();updateBadges();renderAlerts();renderFollowupSummary();renderSmartReminderSummary();}
 function renderFollowups(){
   const el=document.getElementById('followList');if(!el)return;
+  renderTemplateList();
   const items=getS().followups||[];
-  if(!items.length){el.innerHTML='<div class="card"><div class="empty-state">no follow-ups yet — add someone you need to email 💌</div></div>';return;}
+  const reminders=getOpenSmartReminders();
+  const remCard=reminders.length?`<div class="card" style="margin-bottom:10px"><div class="card-title" style="font-size:14px;margin-bottom:6px">needs follow-up (unified)</div>${reminders.slice(0,8).map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px"><strong>${esc(r.title)}</strong>${r.due?` <span style="color:var(--muted)">· ${esc(r.due)}</span>`:''}</div><button class="btn btn-ghost btn-sm" onclick="markSmartReminderDone('${r.id}')" style="font-size:10px;padding:2px 7px">done</button></div>`).join('')}</div>`:'';
+  if(!items.length){el.innerHTML=remCard+'<div class="card"><div class="empty-state">no follow-ups yet — add someone you need to email 💌</div></div>';return;}
   // Group: need-to-send first, then waiting, then done
   const order={'need-to-send':0,'waiting':1,'done':2};
   const sorted=[...items].sort((a,b)=>(order[a.status]??9)-(order[b.status]??9));
-  el.innerHTML='';
+  el.innerHTML=remCard;
   const active=sorted.filter(f=>f.status!=='done');const done=sorted.filter(f=>f.status==='done');
   [...active,...done].forEach(f=>{
     const isOverdue=f.date&&daysDiff(f.date)<0;const isDueSoon=f.date&&daysDiff(f.date)<=1&&daysDiff(f.date)>=0;
@@ -1517,10 +1904,10 @@ function addSub(){
   s.subs.unshift({id:'sub_'+Date.now(),district,contact:(document.getElementById('subContact')?.value||'').trim(),phone:(document.getElementById('subPhone')?.value||'').trim(),status:document.getElementById('subStatus')?.value||'researching',applied:document.getElementById('subApplied')?.value||'',followUp:document.getElementById('subFollowUp')?.value||'',notes:(document.getElementById('subNotes')?.value||'').trim(),createdAt:Date.now()});
   setS(s);['subDistrict','subContact','subPhone','subApplied','subFollowUp','subNotes'].forEach(i=>{const e=document.getElementById(i);if(e)e.value='';});
   document.getElementById('subStatus').value='researching';
-  renderSubs();updateBadges();renderAlerts();toast('District added 🏫');
+  syncSmartReminders();renderSubs();updateBadges();renderAlerts();renderSmartReminderSummary();toast('District added 🏫');
 }
-function updateSubStatus(id,val){const s=getS();const a=(s.subs||[]).find(x=>x.id===id);if(a){a.status=val;setS(s);renderSubs();updateBadges();}}
-function deleteSub(id){const s=getS();s.subs=(s.subs||[]).filter(x=>x.id!==id);setS(s);renderSubs();updateBadges();}
+function updateSubStatus(id,val){const s=getS();const a=(s.subs||[]).find(x=>x.id===id);if(a){a.status=val;setS(s);syncSmartReminders();renderSubs();updateBadges();renderAlerts();renderSmartReminderSummary();}}
+function deleteSub(id){const s=getS();s.subs=(s.subs||[]).filter(x=>x.id!==id);setS(s);syncSmartReminders();renderSubs();updateBadges();renderAlerts();renderSmartReminderSummary();}
 function renderSubs(){
   const el=document.getElementById('subList');if(!el)return;
   const items=getS().subs||[];
@@ -1714,10 +2101,20 @@ function init(){
   if(!s.todos)s.todos=[];if(!s.meds)s.meds=[];if(!s.appts)s.appts=[];
   if(!s.doctorQ)s.doctorQ=[];if(!s.wellness)s.wellness={};if(!s.weekPlan)s.weekPlan={};
   if(!Array.isArray(s.followups))s.followups=[];if(!Array.isArray(s.subs))s.subs=[];
+  if(!Array.isArray(s.financeEntries))s.financeEntries=[];
+  if(!Array.isArray(s.financeBills))s.financeBills=[];
+  if(!s.financeBudgets||typeof s.financeBudgets!=='object')s.financeBudgets={};
+  if(!s.montanaBucket||typeof s.montanaBucket!=='object')s.montanaBucket={target:1500,balance:0,pct:20,tx:[]};
+  if(!Array.isArray(s.montanaBucket.tx))s.montanaBucket.tx=[];
+  if(!Array.isArray(s.smartReminders))s.smartReminders=[];
+  if(!s.integrations||typeof s.integrations!=='object')s.integrations={origin:{mode:'manual',enabled:false,lastSync:''},plaid:{mode:'manual',enabled:false,lastSync:''}};
   setS(s);
+  ensureTemplateDefaults();
+  syncSmartReminders();
   updateHeader();
   renderToday();renderAlerts();updateBadges();
   renderKanban();renderStudy();renderMeds();renderAppts();renderWellness();renderDQ();
+  renderFinance();renderFollowups();renderSmartReminderSummary();
   initBrain();initRoomChecklists();
 }
 
