@@ -971,7 +971,7 @@ body.focus-on .focus-only{display:block;}
 <div id="view-life" class="view">
   <div class="view-header">
     <div class="view-title">to-dos + notes 🧠</div>
-    <div class="view-sub">brain dump · to-do list · the stuff in your head</div>
+    <div class="view-sub">brain dump · to-do list · recurring chores</div>
   </div>
   <div class="life-grid">
     <div style="display:flex;flex-direction:column;gap:11px">
@@ -985,6 +985,52 @@ body.focus-on .focus-only{display:block;}
         </div>
       </div>
       <div class="kanban" id="kanban"></div>
+
+      <!-- Recurring chores -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title" style="font-size:14px;margin-bottom:2px">recurring chores 🔄</div>
+            <div style="font-size:11px;color:var(--muted)">things that happen on a schedule — show up automatically in today's tasks</div>
+          </div>
+        </div>
+        <div id="choreList" style="margin-bottom:12px"></div>
+        <hr>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">add recurring chore</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="irow">
+            <input type="text" id="choreEmoji" placeholder="emoji (optional)" style="max-width:70px">
+            <input type="text" id="choreName" placeholder="chore name (e.g. laundry, water plants, check email)">
+          </div>
+          <div class="irow">
+            <select id="choreCat">
+              <option value="personal">🌿 personal</option>
+              <option value="school">📚 school</option>
+              <option value="medical">💊 medical</option>
+            </select>
+            <select id="choreFreq" onchange="toggleChoreFreqUI()">
+              <option value="daily">every day</option>
+              <option value="weekdays">weekdays only</option>
+              <option value="weekly" selected>once a week</option>
+              <option value="biweekly">every 2 weeks</option>
+              <option value="monthly">once a month</option>
+            </select>
+          </div>
+          <div class="irow" id="choreDayWrap">
+            <label style="align-self:center;white-space:nowrap;font-size:12px;margin:0">on</label>
+            <select id="choreDay">
+              <option value="Mon">Monday</option><option value="Tue">Tuesday</option><option value="Wed">Wednesday</option>
+              <option value="Thu">Thursday</option><option value="Fri">Friday</option><option value="Sat">Saturday</option><option value="Sun">Sunday</option>
+            </select>
+          </div>
+          <div class="irow" id="choreDomWrap" style="display:none">
+            <label style="align-self:center;white-space:nowrap;font-size:12px;margin:0">day of month</label>
+            <input type="number" id="choreDayOfMonth" min="1" max="28" value="1" style="max-width:70px">
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-style:italic">💡 medical chores only appear on weekdays — the app knows you can't call the pharmacy on a Saturday</div>
+          <button class="btn btn-sage btn-sm" onclick="addChore()">add chore</button>
+        </div>
+      </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:11px">
       <div class="card" style="flex:1">
@@ -1340,7 +1386,7 @@ function goTo(id,el){
   if(id==='subs')renderSubs();
   if(id==='health'){renderWellness();renderMeds();renderAppts();renderDQ();}
   if(id==='bigpicture')renderBP();
-  if(id==='life')renderKanban();
+  if(id==='life'){renderKanban();renderChores();}
   if(id==='journal'){renderJournalToday();renderJournalPast('');}
   if(id==='finance')renderFinance();
   if(id==='vault')renderVault();
@@ -1486,6 +1532,7 @@ function updateBadges(){
 // ═══════════════════════════════════════════════════
 function buildTasks(){
   const s=getS();const energy=getEnergy()||3;const dt=getDT();const dow=DAYS_SHORT[new Date().getDay()];
+  const isWeekend=dow==='Sat'||dow==='Sun';
   const now=new Date();now.setHours(0,0,0,0);const tasks=[];let id=0;
   const mk=(text,cat,urgent,src,w)=>({id:'t'+(id++),text,cat,urgent:!!urgent,source:src||'smart',weight:w||0});
   const wellKeys=Object.keys(s.wellness||{}).sort().reverse().slice(0,3);
@@ -1497,13 +1544,23 @@ function buildTasks(){
   if(dow==='Wed'||dow==='Thu')cap=Math.max(2,cap-1);
   if(badDays>=1&&!flare)cap=Math.max(2,cap-1);
   if(flare)tasks.push(mk('🛑 flare day — meds + water + ONE thing. that is enough. 💛','personal',false,'health',100));
+  // Meds reminder always shows (taking meds is every day)
   tasks.push(mk('💊 take meds','medical',false,'health',99));
-  (s.meds||[]).forEach(m=>{if(!m.refill)return;const left=daysDiff(m.refill);if(left<=7&&left>=-3)tasks.push(mk(left<0?'🚨 call pharmacy NOW — '+m.name+' overdue!':'📞 call in '+m.name+' — '+left+'d left','medical',left<=2,'medrefill',98));});
+  // Refill calls — weekdays only (pharmacy is closed weekends)
+  if(!isWeekend){
+    (s.meds||[]).forEach(m=>{if(!m.refill)return;const left=daysDiff(m.refill);if(left<=7&&left>=-3)tasks.push(mk(left<0?'🚨 call pharmacy NOW — '+m.name+' overdue!':'📞 call in '+m.name+' — '+left+'d left','medical',left<=2,'medrefill',98));});
+  }else{
+    // On weekends: surface refill warnings that are very urgent so she doesn't forget Monday
+    (s.meds||[]).forEach(m=>{if(!m.refill)return;const left=daysDiff(m.refill);if(left<=2&&left>=-1)tasks.push(mk('📞 reminder: call in '+m.name+' first thing Monday ('+left+'d left)','medical',false,'medrefill',85));});
+  }
   getAllAssigns().filter(a=>parseISO(a.due)<now&&a.status!=='done').sort((a,b)=>parseISO(a.due)-parseISO(b.due)).slice(0,2).forEach(a=>tasks.push(mk('⚠️ OVERDUE: '+a.name+' ('+a.cls+')','school',true,'assign',90)));
   getAllAssigns().filter(a=>{const d=daysDiff(a.due);return d>=0&&d<=2&&a.status!=='done';}).slice(0,2).forEach(a=>{const d=daysDiff(a.due);tasks.push(mk('📋 '+(d===0?'DUE TODAY':'due tomorrow')+': '+a.name,'school',d===0,'assign',80));});
   ((s.weekPlan||{})[todayISO()]||[]).forEach(aid=>{const a=getAllAssigns().find(x=>String(x.id)===String(aid));if(a&&a.status!=='done')tasks.push(mk('📚 work on: '+a.name+' — '+a.cls,'school',false,'assign',70));});
-  // Follow-ups due today
-  (s.followups||[]).filter(f=>f.status==='need-to-send'&&f.date&&daysDiff(f.date)<=0).forEach(f=>tasks.push(mk('💌 email '+f.name+': '+f.what,'personal',true,'follow',75)));
+  // Follow-ups due today — weekdays only (no sending work emails on weekends unless urgent)
+  (s.followups||[]).filter(f=>f.status==='need-to-send'&&f.date&&daysDiff(f.date)<=0).forEach(f=>{
+    const isUrgent=daysDiff(f.date||'')<-1;
+    if(!isWeekend||isUrgent)tasks.push(mk('💌 email '+f.name+': '+f.what,'personal',isUrgent,'follow',75));
+  });
   if(dt==='twu')tasks.push(mk('📖 review notes + readings before class','school',false,'twu',62));
   if(dt==='matts'&&energy>=3){getAllAssigns().filter(a=>{const d=daysDiff(a.due);return d>2&&d<=7&&a.status==='notstarted';}).slice(0,1).forEach(a=>tasks.push(mk('📚 get ahead: '+a.name,'school',false,'matts',68)));}
   if(dt==='home'){(s.todos||[]).filter(t=>t.cat==='personal'&&!t.done&&t.priority!=='someday').slice(0,1).forEach(t=>tasks.push(mk(t.text,'personal',false,'todo',35)));}
@@ -1513,8 +1570,12 @@ function buildTasks(){
   const weekly=WEEKLY_TASKS[dow]||[];
   weekly.forEach(t=>{if(!tasks.some(x=>x.text.startsWith(t.text.slice(0,20))))tasks.push(mk(t.text,t.cat,t.urgent,'schedule',60));});
   (DATE_TASKS[todayKey()]||[]).forEach(t=>{if(!tasks.some(x=>x.text.slice(0,20)===t.text.slice(0,20)))tasks.push(mk(t.text,t.cat,t.urgent,'schedule',62));});
-  (s.todos||[]).filter(t=>t.priority==='urgent'&&!t.done&&!(dt==='matts'&&t.cat==='work')).slice(0,3).forEach(t=>tasks.push(mk(t.text,t.cat,true,'todo',45)));
-  if(energy>=3&&!flare&&dt!=='doctor')(s.todos||[]).filter(t=>t.priority==='normal'&&!t.done).slice(0,1).forEach(t=>tasks.push(mk(t.text,t.cat,false,'todo',30)));
+  // Recurring chores — inject today's ones
+  const todayChores=getTodayChores();
+  todayChores.forEach(c=>tasks.push(mk(c.emoji?c.emoji+' '+c.name:c.name,c.cat||'personal',false,'chore',42)));
+  // Urgent todos — skip medical ones on weekends (can't action them)
+  (s.todos||[]).filter(t=>t.priority==='urgent'&&!t.done&&!(dt==='matts'&&t.cat==='work')&&!(isWeekend&&t.cat==='medical')).slice(0,3).forEach(t=>tasks.push(mk(t.text,t.cat,true,'todo',45)));
+  if(energy>=3&&!flare&&dt!=='doctor')(s.todos||[]).filter(t=>t.priority==='normal'&&!t.done&&!(isWeekend&&t.cat==='medical')).slice(0,1).forEach(t=>tasks.push(mk(t.text,t.cat,false,'todo',30)));
   const wl=(s.wellness||{})[getWKey()];
   if(!wl||wl.energy===undefined)tasks.push(mk('🌡 log how you\'re feeling (health tab)','personal',false,'wellness',20));
   tasks.sort((a,b)=>(b.weight||0)-(a.weight||0));
@@ -1961,6 +2022,106 @@ function importData(ev){const f=ev.target.files&&ev.target.files[0];if(!f)return
 // ═══════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+//  RECURRING CHORES
+// ═══════════════════════════════════════════════════
+const CHORE_FREQ_LABELS={daily:'every day',weekdays:'weekdays only',weekly:'once a week',biweekly:'every 2 weeks',monthly:'once a month'};
+const CHORE_DAY_LABELS={Sun:'Sunday',Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday'};
+
+function choreMatchesToday(chore){
+  const now=new Date();const dow=DAYS_SHORT[now.getDay()];
+  const isWeekend=dow==='Sat'||dow==='Sun';
+  const iso=todayISO();
+  if(chore.freq==='daily')return true;
+  if(chore.freq==='weekdays')return !isWeekend;
+  if(chore.freq==='weekly')return chore.day===dow;
+  if(chore.freq==='biweekly'){
+    if(chore.day!==dow)return false;
+    if(!chore.lastDone)return true;
+    const last=parseISO(chore.lastDone);const now2=new Date();now2.setHours(0,0,0,0);
+    return Math.floor((now2-last)/86400000)>=12; // at least 12 days since last done
+  }
+  if(chore.freq==='monthly'){
+    // fires on the set day-of-month (stored in chore.dayOfMonth)
+    return now.getDate()===(chore.dayOfMonth||1);
+  }
+  return false;
+}
+
+function getTodayChores(){
+  const s=getS();const chores=s.chores||[];
+  const doneToday=new Set(s['choresDone_'+todayKey()]||[]);
+  return chores.filter(c=>!c.paused&&choreMatchesToday(c)&&!doneToday.has(c.id));
+}
+
+function markChoreDone(id){
+  const s=getS();
+  const k='choresDone_'+todayKey();
+  if(!Array.isArray(s[k]))s[k]=[];
+  if(!s[k].includes(id))s[k].push(id);
+  // Update lastDone on the chore itself (for biweekly logic)
+  const chore=(s.chores||[]).find(c=>c.id===id);
+  if(chore)chore.lastDone=todayISO();
+  setS(s);renderChores();renderToday();toast('✓ done!');
+}
+
+function addChore(){
+  const name=(document.getElementById('choreName')?.value||'').trim();if(!name)return;
+  const freq=document.getElementById('choreFreq')?.value||'weekly';
+  const s=getS();if(!Array.isArray(s.chores))s.chores=[];
+  const chore={
+    id:'chore_'+Date.now(),
+    name,
+    emoji:(document.getElementById('choreEmoji')?.value||'').trim(),
+    cat:document.getElementById('choreCat')?.value||'personal',
+    freq,
+    day:document.getElementById('choreDay')?.value||'Mon',
+    dayOfMonth:parseInt(document.getElementById('choreDayOfMonth')?.value||'1')||1,
+    paused:false,
+    createdAt:Date.now(),
+    lastDone:''
+  };
+  s.chores.push(chore);setS(s);
+  ['choreName','choreEmoji'].forEach(i=>{const e=document.getElementById(i);if(e)e.value='';});
+  renderChores();renderToday();toast('Recurring chore added ✓');
+}
+
+function toggleChoreFreqUI(){
+  const freq=document.getElementById('choreFreq')?.value;
+  const dayWrap=document.getElementById('choreDayWrap');
+  const domWrap=document.getElementById('choreDomWrap');
+  if(dayWrap)dayWrap.style.display=(freq==='weekly'||freq==='biweekly')?'flex':'none';
+  if(domWrap)domWrap.style.display=freq==='monthly'?'flex':'none';
+}
+
+function toggleChorePause(id){
+  const s=getS();const c=(s.chores||[]).find(x=>x.id===id);if(c){c.paused=!c.paused;setS(s);renderChores();}
+}
+function deleteChore(id){
+  const s=getS();s.chores=(s.chores||[]).filter(x=>x.id!==id);setS(s);renderChores();renderToday();
+}
+
+function renderChores(){
+  const el=document.getElementById('choreList');if(!el)return;
+  const s=getS();const chores=s.chores||[];
+  const doneToday=new Set(s['choresDone_'+todayKey()]||[]);
+  if(!chores.length){el.innerHTML='<div class="empty-state" style="font-size:12px;text-align:left;padding:8px 0">no recurring chores yet — add things like laundry, watering plants, checking email</div>';return;}
+  el.innerHTML='';
+  const active=chores.filter(c=>!c.paused);const paused=chores.filter(c=>c.paused);
+  [...active,...paused].forEach(c=>{
+    const isDueToday=choreMatchesToday(c)&&!c.paused;const isDoneToday=doneToday.has(c.id);
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:flex-start;gap:9px;padding:9px 11px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);margin-bottom:6px;'+(c.paused?'opacity:.5':'')+(isDueToday&&!isDoneToday?';border-left:3px solid var(--sage-d)':'');
+    const freqLabel=CHORE_FREQ_LABELS[c.freq]||c.freq;
+    const dayLabel=(c.freq==='weekly'||c.freq==='biweekly')?' · '+CHORE_DAY_LABELS[c.day]||c.day:c.freq==='monthly'?' · day '+c.dayOfMonth:'';
+    const doneBtn=isDueToday&&!isDoneToday?`<button class="btn btn-sage btn-sm" onclick="markChoreDone('${c.id}')" style="font-size:10px;padding:3px 8px">done ✓</button>`:'';
+    const doneTag=isDoneToday?'<span class="pill p-sage" style="font-size:10px">done today ✓</span>':'';
+    const todayTag=isDueToday&&!isDoneToday?'<span class="pill p-teal" style="font-size:10px">due today</span>':'';
+    row.innerHTML=`<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">${c.emoji?c.emoji+' ':''}${esc(c.name)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${freqLabel}${dayLabel} · <span class="pill ${c.cat==='medical'?'p-rose':c.cat==='school'?'p-lav':'p-sage'}" style="font-size:9px">${c.cat}</span></div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">${todayTag}${doneTag}${doneBtn}</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end"><button class="btn btn-ghost btn-sm" onclick="toggleChorePause('${c.id}')" style="font-size:10px;padding:2px 7px">${c.paused?'resume':'pause'}</button><button class="btn btn-ghost btn-sm" onclick="deleteChore('${c.id}')" style="font-size:10px;padding:2px 7px">delete</button></div>`;
+    el.appendChild(row);
+  });
+}
+
 function init(){
   migrate();
   const s=getS();
@@ -1975,10 +2136,12 @@ function init(){
   if(!Array.isArray(s.vault))s.vault=[];
   if(!Array.isArray(s.tripPlans))s.tripPlans=[];
   if(!s.montanaGoal)s.montanaGoal=500;
+  if(!Array.isArray(s.chores))s.chores=[];
   setS(s);
   updateHeader();
   renderToday();renderAlerts();updateBadges();
   renderKanban();renderStudy();renderMeds();renderAppts();renderWellness();renderDQ();
+  renderChores();
   initBrain();initRoomChecklists();
   // Restore focus mode if was on
   if(s.focusMode){document.body.classList.add('focus-on');const btn=document.getElementById('focusModeBtn');if(btn){btn.classList.add('active');btn.textContent='✕ exit focus';}}
