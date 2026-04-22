@@ -460,6 +460,7 @@ body.focus-on .focus-only{display:block;}
     </div>
     <div class="streak-chip" id="streakChip">🔥 0 day streak</div>
     <div class="sb-note">saves automatically ✨</div>
+    <div class="sb-note" id="fileOriginHint" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:10px;line-height:1.45;color:var(--muted)"></div>
   </div>
 </nav>
 
@@ -1105,7 +1106,7 @@ body.focus-on .focus-only{display:block;}
         <div class="savings-goal-title">🏔 montana travel fund</div>
         <div class="savings-goal-sub">ongoing savings for future trips — not one trip, a whole travel life</div>
         <div class="savings-amount" id="montanaSaved">$0</div>
-        <div class="savings-of" id="montanaOf">of <span id="montanaGoalAmt">$500</span> goal</div>
+        <div class="savings-of" id="montanaOf">of <span id="montanaGoalAmt">$1800</span> goal</div>
         <div class="savings-prog"><div class="savings-prog-fill" id="montanaProg" style="width:0%"></div></div>
         <div style="font-size:11px;color:var(--muted)" id="montanaPercent">0% there · keep going 🌿</div>
         <div class="btns" style="margin-top:12px">
@@ -1114,7 +1115,7 @@ body.focus-on .focus-only{display:block;}
         </div>
         <div id="goalEditWrap" style="display:none;margin-top:10px;background:rgba(255,255,255,.6);border-radius:var(--r-xs);padding:10px">
           <label style="font-size:11px;color:var(--sage-t);margin-bottom:4px">savings goal ($)</label>
-          <div class="irow" style="margin-bottom:0"><input type="number" id="montanaGoalIn" min="0" step="10" placeholder="500" style="max-width:120px"><button class="btn btn-sage btn-sm" onclick="saveMontanaGoal()">save</button></div>
+          <div class="irow" style="margin-bottom:0"><input type="number" id="montanaGoalIn" min="0" step="10" placeholder="1800" style="max-width:120px"><button class="btn btn-sage btn-sm" onclick="saveMontanaGoal()">save</button></div>
         </div>
       </div>
 
@@ -1354,11 +1355,234 @@ const SK='alayna_planner_v9';
 function getS(){try{return JSON.parse(localStorage.getItem(SK)||'{}');}catch(e){return {};}}
 function setS(s){try{localStorage.setItem(SK,JSON.stringify(s));}catch(e){toast('Storage full — export backup!');}}
 
-function migrate(){
-  if(localStorage.getItem(SK))return;
-  for(const k of['alayna_planner_v8','alayna_planner_v7','alayna_planner_v6','alayna_planner_v5','alayna_planner_v4','alayna_planner']){
-    const raw=localStorage.getItem(k);if(raw){localStorage.setItem(SK,raw);return;}
+function parseLSKey(key){
+  const raw=localStorage.getItem(key);
+  if(!raw)return null;
+  try{return JSON.parse(raw);}catch(_e){return null;}
+}
+function isModularPlannerV1(o){
+  return o&&typeof o==='object'&&o.version===1&&o.ui&&Array.isArray(o.tasks);
+}
+function monolithRichness(o){
+  if(!o||typeof o!=='object'||isModularPlannerV1(o))return -1;
+  let n=0;
+  if(Array.isArray(o.customAssigns))n+=o.customAssigns.length*10;
+  if(Array.isArray(o.customAssignments))n+=o.customAssignments.length*10;
+  const asn=o.assignments||{};
+  n+=Object.keys(asn).filter((k)=>String(k)!=='9').length;
+  if(o.study&&typeof o.study==='object')n+=Object.keys(o.study).length;
+  if(Array.isArray(o.vault))n+=o.vault.length*4;
+  if(Array.isArray(o.docVault))n+=o.docVault.length*4;
+  if(o.examStrength&&typeof o.examStrength==='object')n+=1;
+  return n;
+}
+function mergeWeekPlans(a,b){
+  const out={};
+  const days=new Set([...Object.keys(a||{}),...Object.keys(b||{})]);
+  days.forEach((day)=>{
+    const u=new Set([...(a||{})[day]||[],...(b||{})[day]||[]].map(String));
+    if(u.size)out[day]=[...u];
+  });
+  return out;
+}
+function builtinAssignIdSet(){
+  return new Set(BUILT_IN_ASSIGNS.map((a)=>String(a.id)));
+}
+function normalizeCustomAssignsShape(s){
+  if(!s)return;
+  const ca=s.customAssigns;
+  if(ca==null){s.customAssigns=[];return;}
+  if(Array.isArray(ca))return;
+  if(typeof ca==='object'){s.customAssigns=Object.values(ca).filter(Boolean);return;}
+  s.customAssigns=[];
+}
+function toArrayMaybe(v){
+  if(v==null)return[];
+  if(Array.isArray(v))return v;
+  if(typeof v==='object')return Object.values(v).filter(Boolean);
+  return[];
+}
+/** v6 used customAssignments; v7+ use customAssigns. Fold older shape into customAssigns. */
+function coerceLegacyCustomAssignFields(s){
+  if(!s||typeof s!=='object')return;
+  const fromV6=toArrayMaybe(s.customAssignments);
+  if(fromV6.length){
+    if(!Array.isArray(s.customAssigns))s.customAssigns=[];
+    const seen=new Set(s.customAssigns.map((x)=>String(x.id)));
+    for(const row of fromV6){
+      if(!row||seen.has(String(row.id)))continue;
+      s.customAssigns.push(row);
+      seen.add(String(row.id));
+    }
   }
+  normalizeCustomAssignsShape(s);
+}
+function taskStatusToAssignStatus(st){
+  if(st==='done')return 'done';
+  if(st==='in_progress')return 'inprogress';
+  return 'notstarted';
+}
+/** Refactored planner (state.js) stores custom school work as tasks with source legacy-assignment — rebuild customAssigns + assignments for the monolith school UI. */
+function hydrateCustomAssignsFromModularTasks(s){
+  if(!s||!Array.isArray(s.tasks))return false;
+  const builtins=builtinAssignIdSet();
+  let changed=false;
+  normalizeCustomAssignsShape(s);
+  if(!s.assignments)s.assignments={};
+  const seen=new Set(s.customAssigns.map((a)=>String(a.id)));
+  for(const t of s.tasks){
+    const tid=String(t.id||'');
+    if(t.source!=='legacy-assignment'&&!tid.startsWith('assign_'))continue;
+    const nativeId=tid.startsWith('assign_')?tid.slice(7):tid;
+    if(!nativeId||builtins.has(nativeId))continue;
+    const parts=String(t.notes||'').split('•');
+    const cls=((parts[0]||'')+'').trim()||'General';
+    const url=parts.length>1?parts.slice(1).join('•').trim():'';
+    const st=taskStatusToAssignStatus(t.status);
+    if(!seen.has(nativeId)){
+      s.customAssigns.push({
+        id:nativeId,
+        name:t.title||'Assignment',
+        cls,
+        due:t.dueDate||'',
+        cat:'school',
+        url,
+        status:st,
+      });
+      seen.add(nativeId);
+      changed=true;
+    }
+    if(s.assignments[nativeId]===undefined){
+      s.assignments[nativeId]=st;
+      changed=true;
+    }
+  }
+  return changed;
+}
+function unionCustomAssignsIntoTarget(target,src){
+  if(!Array.isArray(target.customAssigns))target.customAssigns=[];
+  const seen=new Set(target.customAssigns.map((a)=>String(a.id)));
+  for(const a of src.customAssigns||[]){
+    if(!a||seen.has(String(a.id)))continue;
+    target.customAssigns.push(a);
+    seen.add(String(a.id));
+  }
+}
+/** Pull school / cert / vault fields from a legacy snapshot (monolith or modular) into target. v9 wins on same keys where it matters. */
+function mergeV8SchoolCertIntoTarget(target,src){
+  if(!src)return;
+  coerceLegacyCustomAssignFields(target);
+  coerceLegacyCustomAssignFields(src);
+  if(isModularPlannerV1(src)){
+    const work=JSON.parse(JSON.stringify(src));
+    normalizeCustomAssignsShape(work);
+    hydrateCustomAssignsFromModularTasks(work);
+    unionCustomAssignsIntoTarget(target,work);
+    target.assignments={...(work.assignments||{}),...(target.assignments||{})};
+    target.assignmentOverrides={...(work.assignmentOverrides||{}),...(target.assignmentOverrides||{})};
+    target.weekPlan=mergeWeekPlans(work.weekPlan,target.weekPlan);
+    target.study={...(work.study||{}),...(target.study||{})};
+    target.skipped=[...new Set([...(work.skipped||[]),...(target.skipped||[])])];
+    if(!target.examStrength&&work.examStrength)target.examStrength=work.examStrength;
+    const dvIds=new Set((target.docVault||[]).map((x)=>x&&x.id).filter(Boolean));
+    const dv=[...(target.docVault||[])];
+    for(const d of work.docVault||[]){if(d&&d.id&&!dvIds.has(d.id)){dv.push(d);dvIds.add(d.id);}}
+    target.docVault=dv;
+    const vaIds=new Set((target.vault||[]).map((x)=>x&&x.id).filter(Boolean));
+    const va=[...(target.vault||[])];
+    for(const d of work.vault||[]){if(d&&d.id&&!vaIds.has(d.id)){va.push({...d});vaIds.add(d.id);}}
+    target.vault=va;
+    return;
+  }
+  normalizeCustomAssignsShape(target);
+  unionCustomAssignsIntoTarget(target,src);
+  target.assignments={...(src.assignments||{}),...(target.assignments||{})};
+  target.assignmentOverrides={...(src.assignmentOverrides||{}),...(target.assignmentOverrides||{})};
+  target.weekPlan=mergeWeekPlans(src.weekPlan,target.weekPlan);
+  target.study={...(src.study||{}),...(target.study||{})};
+  target.skipped=[...new Set([...(src.skipped||[]),...(target.skipped||[])])];
+  if(!target.examStrength&&src.examStrength)target.examStrength=src.examStrength;
+  const dvIds=new Set((target.docVault||[]).map((x)=>x&&x.id).filter(Boolean));
+  const dv=[...(target.docVault||[])];
+  for(const d of src.docVault||[]){if(d&&d.id&&!dvIds.has(d.id)){dv.push(d);dvIds.add(d.id);}}
+  target.docVault=dv;
+  const vaIds=new Set((target.vault||[]).map((x)=>x&&x.id).filter(Boolean));
+  const va=[...(target.vault||[])];
+  for(const d of src.vault||[]){if(d&&d.id&&!vaIds.has(d.id)){va.push({...d});vaIds.add(d.id);}}
+  target.vault=va;
+  hydrateCustomAssignsFromModularTasks(target);
+}
+const LEGACY_MONOLITH_KEYS=['alayna_planner_v8','alayna_planner_v7','alayna_planner_v6','alayna_planner_v5','alayna_planner_v4','alayna_planner'];
+function migrate(){
+  let v9=parseLSKey(SK);
+
+  if(isModularPlannerV1(v9)){
+    const s=JSON.parse(JSON.stringify(v9));
+    const snap=JSON.stringify(s);
+    for(const key of LEGACY_MONOLITH_KEYS){
+      const src=parseLSKey(key);
+      if(!src)continue;
+      mergeV8SchoolCertIntoTarget(s,src);
+    }
+    coerceLegacyCustomAssignFields(s);
+    hydrateCustomAssignsFromModularTasks(s);
+    if(JSON.stringify(s)!==snap)setS(s);
+    return;
+  }
+
+  const v9Empty=!v9||typeof v9!=='object'||Object.keys(v9).length===0;
+  if(v9Empty){
+    for(const k of LEGACY_MONOLITH_KEYS){
+      const cand=parseLSKey(k);
+      if(!cand||isModularPlannerV1(cand))continue;
+      const raw=localStorage.getItem(k);
+      if(raw){localStorage.setItem(SK,raw);break;}
+    }
+  }
+
+  const s=JSON.parse(JSON.stringify(parseLSKey(SK)||{}));
+  if(isModularPlannerV1(s))return;
+  const snapStart=JSON.stringify(s);
+  for(const key of LEGACY_MONOLITH_KEYS){
+    const src=parseLSKey(key);
+    if(!src)continue;
+    mergeV8SchoolCertIntoTarget(s,src);
+  }
+  coerceLegacyCustomAssignFields(s);
+  hydrateCustomAssignsFromModularTasks(s);
+  if(JSON.stringify(s)!==snapStart)setS(s);
+}
+
+function importDocVaultIfNeeded(){
+  const s=getS();
+  if(!Array.isArray(s.vault))s.vault=[];
+  const ids=new Set(s.vault.map((x)=>x.id));
+  const docSources=[s];
+  for(const key of LEGACY_MONOLITH_KEYS)docSources.push(parseLSKey(key)||{});
+  let changed=false;
+  for(const src of docSources){
+    for(const d of src.docVault||[]){
+      if(!d||ids.has(d.id))continue;
+      const dt=String(d.docType||'').toLowerCase();
+      let cat='other';
+      if(/cert|ppr|str|texes|core|161|160|293|211|elar/.test(dt))cat='cert';
+      else if(/ref/.test(dt))cat='reference';
+      else if(/trans|twu|school|transcript|tb\s/.test(dt))cat='school';
+      else if(/med|health|insur/.test(dt))cat='medical';
+      s.vault.push({
+        id:d.id,
+        name:d.name||'Document',
+        cat,
+        exp:d.expires||'',
+        where:src===s?'embedded in planner data':'imported from older planner backup (v7/v8)',
+        notes:[d.docType,d.mime].filter(Boolean).join(' · '),
+        createdAt:d.addedAt||Date.now(),
+      });
+      ids.add(d.id);
+      changed=true;
+    }
+  }
+  if(changed)setS(s);
 }
 
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -1705,8 +1929,25 @@ function getAllAssigns(){
   const custom=(s.customAssigns||[]).map(a=>({...a,status:getAssignSt(a.id),src:'custom'}));
   return [...base,...custom];
 }
-function getAssignSt(id){const s=getS();if(s.assignments&&s.assignments[id]!==undefined)return s.assignments[id];if(id===9)return 'done';return 'notstarted';}
-function cycleStatus(id){const s=getS();if(!s.assignments)s.assignments={};const order=['notstarted','inprogress','done'];const cur=getAssignSt(id);s.assignments[id]=order[(order.indexOf(cur)+1)%3];setS(s);renderAssigns();renderPool();renderDueThisWeek();renderAlerts();updateBadges();}
+function normalizeAssignStatus(st){
+  if(st==='done'||st==='inprogress'||st==='notstarted')return st;
+  if(st==='in_progress')return 'inprogress';
+  if(st==='todo'||st==='open'||st===null||st===undefined||st==='')return 'notstarted';
+  return 'notstarted';
+}
+function getAssignSt(id){const s=getS();const k=String(id);let st;if(s.assignments&&s.assignments[k]!==undefined)st=s.assignments[k];else if(id===9||k==='9')st='done';else st='notstarted';return normalizeAssignStatus(st);}
+function cycleStatus(id){
+  const s=getS();
+  if(!s.assignments)s.assignments={};
+  const k=String(id);
+  const order=['notstarted','inprogress','done'];
+  let cur=normalizeAssignStatus(getAssignSt(id));
+  const ix=order.indexOf(cur);
+  const next=order[ix===-1?0:(ix+1)%3];
+  s.assignments[k]=next;
+  setS(s);
+  renderAssigns();renderPool();renderDueThisWeek();renderAlerts();updateBadges();
+}
 function renderAssigns(){
   const grid=document.getElementById('assignGrid');if(!grid)return;
   const now=new Date();now.setHours(0,0,0,0);const s=getS();const placed=new Set(Object.values(s.weekPlan||{}).flat().map(String));
@@ -1719,8 +1960,12 @@ function renderAssigns(){
     const sc={notstarted:'p-gray',inprogress:'p-butter',done:'p-sage'};const sl={notstarted:'not started',inprogress:'in progress',done:'done ✓'};
     const pct=a.status==='done'?100:a.status==='inprogress'?50:0;
     const card=document.createElement('div');card.className='afc'+(a.status==='done'?' done-card':'');card.draggable=true;
-    card.innerHTML=`<div class="afc-title">${esc(a.name)}</div><div class="afc-class">${esc(a.cls)}</div><div class="afc-due ${dc}">${dt}</div><div class="afc-prog"><div class="afc-prog-fill" style="width:${pct}%;background:${a.status==='done'?'var(--sage-d)':'var(--lav-d)'}"></div></div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="pill ${sc[a.status]||'p-gray'} status-cycle" onclick="cycleStatus(${JSON.stringify(a.id)})">${sl[a.status]}</span>${a.src==='custom'?`<button class="btn btn-ghost btn-sm" onclick="deleteAssign(${JSON.stringify(a.id)})" style="font-size:10px;padding:2px 7px">delete</button>`:''} ${placed.has(String(a.id))?'<span class="afc-placed">✓ in week plan</span>':''}</div>`;
-    card.addEventListener('dragstart',e=>{e.dataTransfer.setData('aid',String(a.id));card.style.opacity='.5';});
+    card.innerHTML=`<div class="afc-title">${esc(a.name)}</div><div class="afc-class">${esc(a.cls)}</div><div class="afc-due ${dc}">${dt}</div><div class="afc-prog"><div class="afc-prog-fill" style="width:${pct}%;background:${a.status==='done'?'var(--sage-d)':'var(--lav-d)'}"></div></div><div class="afc-actions" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span draggable="false" class="pill ${sc[a.status]||'p-gray'} status-cycle">${sl[a.status]||''}</span>${a.src==='custom'?`<button type="button" draggable="false" class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 7px">delete</button>`:''} ${placed.has(String(a.id))?'<span class="afc-placed">✓ in week plan</span>':''}</div>`;
+    const pill=card.querySelector('.status-cycle');
+    if(pill)pill.addEventListener('click',(e)=>{e.preventDefault();e.stopPropagation();cycleStatus(a.id);});
+    const delBtn=card.querySelector('.afc-actions button');
+    if(delBtn)delBtn.addEventListener('click',(e)=>{e.preventDefault();e.stopPropagation();deleteAssign(a.id);});
+    card.addEventListener('dragstart',e=>{if(e.target.closest('.afc-actions')){e.preventDefault();return;}e.dataTransfer.setData('aid',String(a.id));card.style.opacity='.5';});
     card.addEventListener('dragend',()=>card.style.opacity='1');
     grid.appendChild(card);
   });
@@ -2017,7 +2262,7 @@ function initBrain(){const el=document.getElementById('brainEl');if(!el)return;e
 //  BACKUP
 // ═══════════════════════════════════════════════════
 function exportData(){const pack={exportedAt:new Date().toISOString(),data:getS()};const blob=new Blob([JSON.stringify(pack,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='alayna-planner-backup-'+todayISO()+'.json';a.click();URL.revokeObjectURL(a.href);const s=getS();s.lastBackupAt=Date.now();setS(s);toast('Backup exported 🌿');}
-function importData(ev){const f=ev.target.files&&ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);const data=o.data&&typeof o.data==='object'?o.data:o;if(!data||typeof data!=='object')throw new Error('Invalid file');if(!confirm('Replace all planner data with this backup?')){ev.target.value='';return;}setS(data);location.reload();}catch(e){toast('Import failed: '+e.message);ev.target.value='';}};r.readAsText(f);}
+function importData(ev){const f=ev.target.files&&ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);const data=o.data&&typeof o.data==='object'?o.data:o;if(!data||typeof data!=='object')throw new Error('Invalid file');if(!confirm('Replace all planner data with this backup?')){ev.target.value='';return;}coerceLegacyCustomAssignFields(data);hydrateCustomAssignsFromModularTasks(data);setS(data);location.reload();}catch(e){toast('Import failed: '+e.message);ev.target.value='';}};r.readAsText(f);}
 
 // ═══════════════════════════════════════════════════
 //  INIT
@@ -2122,9 +2367,38 @@ function renderChores(){
   });
 }
 
+function showFileProtocolHint(){
+  if(location.protocol!=='file:')return;
+  const box=document.getElementById('fileOriginHint');
+  if(!box)return;
+  const keyV8=localStorage.getItem('alayna_planner_v8');
+  const keyV9=localStorage.getItem(SK);
+  const hasV8=!!(keyV8&&keyV8.length>2);
+  const hasV9=!!(keyV9&&keyV9.length>2);
+  const kb=function(s){if(!s)return 0;return Math.round((s.length/1024)*10)/10};
+  box.style.display='block';
+  if(hasV8&&hasV9){
+    box.innerHTML='<strong>Local file</strong> — this browser profile already has both <code>alayna_planner_v8</code> (~'+kb(keyV8)+' KB) and <code>alayna_planner_v9</code> (~'+kb(keyV9)+' KB), so v9 can read the older key on the same machine. School and vault merge on each load. Export a backup now and then so you never lose data.';
+    return;
+  }
+  if(hasV8&&!hasV9){
+    box.innerHTML='<strong>Local file</strong> — v8 data found (~'+kb(keyV8)+' KB), v9 slot empty. Reload after migration runs, or use <strong>import backup</strong> if anything looks missing.';
+    return;
+  }
+  if(!hasV8&&hasV9){
+    box.innerHTML='<strong>Local file</strong> — only v9 data here (~'+kb(keyV9)+' KB). If you expected older assignments, they may live under a <em>different</em> folder or browser profile. Import a JSON backup from v8, or open v8 from this exact folder once.';
+    return;
+  }
+  box.innerHTML='<strong>Local file</strong> — no planner data in this profile yet. If you used another copy of these HTML files, export from there and <strong>import backup</strong> here. Serving this folder over <code>http://127.0.0.1</code> (e.g. <code>python3 -m http.server 8080</code>) keeps one storage URL if you switch machines.';
+}
+
 function init(){
   migrate();
-  const s=getS();
+  importDocVaultIfNeeded();
+  let s=getS();
+  coerceLegacyCustomAssignFields(s);
+  if(hydrateCustomAssignsFromModularTasks(s))setS(s);
+  s=getS();
   if(!s.assignments)s.assignments={};
   if(!s.assignments[9])s.assignments[9]='done';
   if(!s.todos)s.todos=[];if(!s.meds)s.meds=[];if(!s.appts)s.appts=[];
@@ -2135,7 +2409,7 @@ function init(){
   if(!Array.isArray(s.finance))s.finance=[];
   if(!Array.isArray(s.vault))s.vault=[];
   if(!Array.isArray(s.tripPlans))s.tripPlans=[];
-  if(!s.montanaGoal)s.montanaGoal=500;
+  if(!s.montanaGoal)s.montanaGoal=1800;
   if(!Array.isArray(s.chores))s.chores=[];
   setS(s);
   updateHeader();
@@ -2145,6 +2419,7 @@ function init(){
   initBrain();initRoomChecklists();
   // Restore focus mode if was on
   if(s.focusMode){document.body.classList.add('focus-on');const btn=document.getElementById('focusModeBtn');if(btn){btn.classList.add('active');btn.textContent='✕ exit focus';}}
+  showFileProtocolHint();
 }
 
 
@@ -2324,16 +2599,22 @@ function showFinanceModal(type){
   const d=document.getElementById('finDate');if(d&&!d.value)d.value=todayISO();
 }
 function closeFinanceModal(){const m=document.getElementById('financeModal');if(m)m.style.display='none';['finAmt','finNote','finDate'].forEach(i=>{const e=document.getElementById(i);if(e)e.value='';});}
+function parseFinAmount(raw){
+  const s=String(raw||'').trim().replace(/\$/g,'').replace(/\s/g,'').replace(/,/g,'');
+  const n=parseFloat(s);
+  return n;
+}
 function saveFinanceEntry(){
-  const amt=parseFloat(document.getElementById('finAmt')?.value||'0');if(!amt||isNaN(amt))return;
+  const amt=parseFinAmount(document.getElementById('finAmt')?.value);
+  if(!amt||isNaN(amt)||amt<=0)return;
   const s=getS();if(!Array.isArray(s.finance))s.finance=[];
   const type=document.getElementById('finType')?.value||'savings';
   s.finance.unshift({id:'f_'+Date.now(),amt,type,note:(document.getElementById('finNote')?.value||'').trim(),date:document.getElementById('finDate')?.value||todayISO()});
   setS(s);closeFinanceModal();renderFinance();toast('Saved 💰');
 }
 function deleteFinanceEntry(id){const s=getS();s.finance=(s.finance||[]).filter(x=>x.id!==id);setS(s);renderFinance();}
-function showGoalEdit(){const w=document.getElementById('goalEditWrap');if(w){w.style.display=w.style.display==='none'?'block':'none';const s=getS();const inp=document.getElementById('montanaGoalIn');if(inp)inp.value=s.montanaGoal||500;}}
-function saveMontanaGoal(){const s=getS();const v=parseFloat(document.getElementById('montanaGoalIn')?.value||'500');s.montanaGoal=Math.max(1,v||500);setS(s);showGoalEdit();renderFinance();toast('Goal updated 🏔');}
+function showGoalEdit(){const w=document.getElementById('goalEditWrap');if(w){w.style.display=w.style.display==='none'?'block':'none';const s=getS();const inp=document.getElementById('montanaGoalIn');if(inp)inp.value=s.montanaGoal||1800;}}
+function saveMontanaGoal(){const s=getS();const v=parseFinAmount(document.getElementById('montanaGoalIn')?.value)||1800;s.montanaGoal=Math.max(1,v);setS(s);showGoalEdit();renderFinance();toast('Goal updated 🏔');}
 function showTripModal(){const m=document.getElementById('tripModal');if(m)m.style.display='flex';}
 function closeTripModal(){const m=document.getElementById('tripModal');if(m)m.style.display='none';['tripName','tripDates','tripNotes','tripBudget','tripDeadline'].forEach(i=>{const e=document.getElementById(i);if(e)e.value='';});}
 function saveTripPlan(){
@@ -2345,7 +2626,7 @@ function saveTripPlan(){
 function deleteTripPlan(id){const s=getS();s.tripPlans=(s.tripPlans||[]).filter(x=>x.id!==id);setS(s);renderFinance();}
 function renderFinance(){
   const s=getS();const entries=s.finance||[];
-  const goal=s.montanaGoal||500;
+  const goal=s.montanaGoal||1800;
   const montanaSaved=entries.filter(e=>e.type==='montana').reduce((a,e)=>a+e.amt,0);
   const generalSaved=entries.filter(e=>e.type==='savings').reduce((a,e)=>a+e.amt,0);
   const income=entries.filter(e=>e.type==='income');

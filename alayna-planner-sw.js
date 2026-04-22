@@ -1,7 +1,7 @@
-/* Offline shell for hosted alayna-planner-v8.html — same origin / same localStorage. */
-const CACHE = 'alayna-planner-v2';
+/* Offline shell for hosted alayna-planner-v9.html — same origin / same localStorage. */
+const CACHE = 'alayna-planner-v4';
 const CORE = [
-  new URL('./alayna-planner-v8.html', self.location).href,
+  new URL('./alayna-planner-v9.html', self.location).href,
   new URL('./alayna-planner-manifest.webmanifest', self.location).href,
   new URL('./alayna-planner-icon-192.png', self.location).href,
   new URL('./alayna-planner-icon-512.png', self.location).href,

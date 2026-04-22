@@ -145,7 +145,17 @@
     if (!raw || typeof raw !== "object") return base;
 
     const todos = Array.isArray(raw.todos) ? raw.todos : [];
-    const customAssigns = Array.isArray(raw.customAssigns) ? raw.customAssigns : [];
+    const customFromV89 = Array.isArray(raw.customAssigns) ? raw.customAssigns : [];
+    const customFromV6 = Array.isArray(raw.customAssignments) ? raw.customAssignments : [];
+    const seenIds = new Set(customFromV89.map((a) => String(a.id)));
+    const customAssigns = [...customFromV89];
+    for (let i = 0; i < customFromV6.length; i += 1) {
+      const a = customFromV6[i];
+      if (a && !seenIds.has(String(a.id))) {
+        customAssigns.push(a);
+        seenIds.add(String(a.id));
+      }
+    }
     const assignmentsState = raw.assignments || {};
 
     const mappedTasks = todos.map(taskFromLegacyTodo);
